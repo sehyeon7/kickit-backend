@@ -1,0 +1,16 @@
+# Byte-compiled files
+*.pyc
+__pycache__/
+
+# Virtual environment
+venv/
+
+# Environment variables
+.env
+
+# Django static and media files
+/static/
+/media/
+
+# VS Code settings
+.vscode/
