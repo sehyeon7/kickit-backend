@@ -15,17 +15,31 @@ from pathlib import Path
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+import os, environ
+
+env = environ.Env(
+    DEBUG=(bool, True)
+)
+
+environ.Env.read_env(
+    env_file=os.path.join(BASE_DIR, '.env')
+)
+
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-le@i^o4q^k&&&d_@lvdrttg@*5781a9f&(^n@6+@on#lcvatkd'
+SECRET_KEY = env('SECRET_KEY')
+SUPABASE_URL = env('SUPABASE_URL')
+SUPABASE_ANON_PUBLIC_KEY = env('SUPABASE_ANON_PUBLIC_KEY')
+SUPABASE_SERVICE_ROLE_KEY = env('SUPABASE_SERVICE_ROLE_KEY')
+SUPABASE_BUCKET = env('SUPABASE_BUCKET')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['localhost', '127.0.0.1']
 
 
 # Application definition
@@ -37,11 +51,22 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    # External
+    "rest_framework",
+    'rest_framework_simplejwt',
+    'rest_framework_simplejwt.token_blacklist',
+    # Internal
+    'corsheaders',
+    'apps.account',
+    'apps.notification',
+    'apps.board',
+    'apps.settings_app',
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -73,12 +98,36 @@ WSGI_APPLICATION = 'kickit.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
+pw = env('SUPABASE_PASSWORD')
+host = env('SUPABASE_HOST')
+user =  env('SUPABASE_USER')
+name = env('SUPABASE_NAME')
+host = env('SUPABASE_HOST')
+port = env('SUPABASE_PORT')
+
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.sqlite3',
+#         'NAME': BASE_DIR / 'db.sqlite3',
+#     }
+# }
+
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': name,
+        'USER': user,
+        'PASSWORD': pw, 
+        'HOST': host,
+        'PORT': port,
+        'CERT' : 'kickit.prod-ca-2021.crt',
+    },
 }
+DATABASE_ROUTERS = ['kickit.routers.CustomRouter']
+
+# Static & Media
+STATIC_URL = '/static/'
+MEDIA_URL = '/media/'
 
 
 # Password validation
@@ -121,3 +170,28 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+REST_FRAMEWORK = {
+    'DEFAULT_PERMISSION_CLASSES' : (
+        'rest_framework.permissions.AllowAny',
+    ),
+    'DEFAULT_AUTHENTICATION_CLASSES': ( 
+        'rest_framework_simplejwt.authentication.JWTAuthentication', 
+    )
+}
+
+# CORS
+CORS_ALLOW_ALL_ORIGINS = True
+
+from datetime import timedelta 
+REST_USE_JWT = True 
+SIMPLE_JWT = {  'ACCESS_TOKEN_LIFETIME': timedelta(minutes=30), 
+                'REFRESH_TOKEN_LIFETIME': timedelta(days=1), 
+                'ROTATE_REFRESH_TOKENS': True, 
+                'BLACKLIST_AFTER_ROTATION': True, 
+                'AUTH_HEADER_TYPES': ('Bearer', ), 
+                'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken', ), 
+                'ACCESS_TOKEN': 'access_token', 
+                'REFRESH_TOKEN': 'refresh_token', 
+                "JWT_COOKIE_SAMESITE": "None",
+            }
