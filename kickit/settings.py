@@ -127,6 +127,7 @@ DATABASE_ROUTERS = ['kickit.routers.CustomRouter']
 
 # Static & Media
 STATIC_URL = '/static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
 MEDIA_URL = '/media/'
 
 
