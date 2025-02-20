@@ -17,3 +17,7 @@ venv/
 
 # SUPABSE SSL Certificate
 prod-ca-2021.crt
+# Elastic Beanstalk Files
+.elasticbeanstalk/*
+!.elasticbeanstalk/*.cfg.yml
+!.elasticbeanstalk/*.global.yml
