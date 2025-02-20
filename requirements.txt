@@ -65,4 +65,5 @@ typing_extensions==4.12.2
 urllib3==1.26.16
 wcwidth==0.2.13
 websockets==14.2
+whitenoise==6.9.0
 yarl==1.18.3
