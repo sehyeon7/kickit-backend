@@ -94,9 +94,9 @@ class NicknameUpdateSerializer(serializers.Serializer):
 class ProfileUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserProfile
-        fields = ['school', 'student_id', 'department']
+        fields = ['school', 'admission_year', 'department']
 
 class ProfileCompletionSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserProfile
-        fields = ['school', 'student_id', 'department']  # 필요한 필드만
+        fields = ['school', 'admission_year', 'department']  # 필요한 필드만

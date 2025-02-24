@@ -30,7 +30,7 @@ class UserProfile(models.Model):
     google_sub = models.CharField(max_length=255, blank=True, null=True, unique=True)
     school = models.ForeignKey(School, null=True, blank=True, on_delete=models.SET_NULL)
     department = models.ForeignKey(Department, null=True, blank=True, on_delete=models.SET_NULL)
-    student_id = models.CharField(max_length=20, blank=True, null=True)
+    admission_year = models.CharField(max_length=20, blank=True, null=True)
     nickname = models.CharField(max_length=50, blank=True)
 
     # 프로필 완성 여부
