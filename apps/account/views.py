@@ -14,74 +14,101 @@ from google.auth.transport import requests as google_requests
 
 from .models import UserProfile, School, Department
 from .serializers import (
-    RegisterSerializer, UserProfileSerializer,
+    UserSignupSerializer, GoogleAuthCheckSerializer, LoginSerializer, UserProfileSerializer,
     SchoolSerializer, DepartmentSerializer, GoogleLoginSerializer,
-    NicknameCheckSerializer, NicknameUpdateSerializer, ProfileUpdateSerializer, ProfileCompletionSerializer
+    NicknameCheckSerializer, NicknameUpdateSerializer, ProfileUpdateSerializer
 )
 
 GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID')
 
-class GoogleLoginView(APIView):
+class GoogleAuthCheckView(APIView):
     """
-    1) 프론트엔드에서 Google 로그인 → ID Token 획득
-    2) 이 endpoint에 POST로 { "id_token": "..." } 전송
-    3) 서버가 ID Token 검증 → User 생성/조회
-    4) DRF 세션/토큰 로그인 or JWT 발급(상황에 따라)
+    구글 로그인 인증 + 유저 존재 여부 확인
+    1) 프론트에서 Google 로그인 → ID Token 획득
+    2) ID Token을 백엔드에 POST 요청 { "id_token": "..." }
+    3) 서버가 ID Token 검증 → User 존재 여부 판별
+    - 이미 존재하는 경우 로그인 처리 및 홈으로 이동
+    - 존재하지 않는 경우 "ID Token 검증 성공" 메시지 전달
     """
     permission_classes = [permissions.AllowAny]
 
     def post(self, request):
-        serializer = GoogleLoginSerializer(data=request.data)
+        serializer = GoogleAuthCheckSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         id_token_value = serializer.validated_data['id_token']
 
         try:
-            # 구글 ID Token 검증
             idinfo = id_token.verify_oauth2_token(
-                id_token_value,
-                google_requests.Request(),
-                GOOGLE_CLIENT_ID
+                id_token_value, google_requests.Request(), GOOGLE_CLIENT_ID
             )
-            # idinfo 예: {'iss': 'accounts.google.com', 'sub': '1234567890', 'email': '...' ...}
-
-            # sub: 구글 계정 고유 ID
             google_sub = idinfo['sub']
             email = idinfo.get('email')
 
-            # 유저가 이미 존재하는지 확인
             profile = UserProfile.objects.filter(google_sub=google_sub).first()
             if profile:
-                # 이미 가입된 유저
                 user = profile.user
-                is_new_user = False
-            else:
-                # 새 유저 생성
-                username = f"google_{google_sub}"  # 고유 username 만들기
-                user = User.objects.create(
-                    username=username,
-                    email=email
-                )
-                # 비밀번호는 사용 안 함(소셜 로그인 전용), 더미값 지정 가능
-                user.set_unusable_password()
-                user.save()
+                login(request, user)
+                return Response({"email": email, "is_new_user": False, "user_id": user.id}, status=200)
 
-                profile = UserProfile.objects.create(
-                    user=user,
-                    google_sub=google_sub
-                )
-                is_new_user = True
-
-            # Django 세션 로그인(혹은 JWT 토큰 발급)
-            login(request, user)  # 세션 기반이라면
-
-            return Response({
-                "email": email,
-                "is_new_user": is_new_user
-            }, status=status.HTTP_200_OK)
+            return Response({"email": email, "is_new_user": True, "google_sub": google_sub}, status=200)
 
         except ValueError:
-            # ID Token이 유효하지 않은 경우
-            return Response({"error": "유효하지 않은 Google ID Token"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "유효하지 않은 Google ID Token"}, status=400)
+
+class UserSignupView(APIView):
+    """
+    통합 회원가입 (일반 + Google 로그인)
+    1) 일반 회원가입 → email + password 필수
+    2) Google 로그인 회원가입 → email + google_sub 필수
+    """
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        serializer = UserSignupSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        email = data["email"]
+        nickname = data["nickname"]
+        school_id = data["school"]
+        department_id = data["department"]
+        admission_year = data["admission_year"]
+        password = data.get("password", None)
+        google_sub = data.get("google_sub", None)
+
+        if User.objects.filter(email=email).exists():
+            return Response({"error": "이미 가입된 이메일입니다."}, status=400)
+
+        user = User.objects.create(username=email, email=email)
+        if password:
+            user.set_password(password)
+        else:
+            user.set_unusable_password()
+        user.save()
+
+        UserProfile.objects.create(
+            user=user, google_sub=google_sub, nickname=nickname,
+            school_id=school_id, department_id=department_id,
+            admission_year=admission_year
+        )
+        login(request, user)
+        return Response({"success": "회원가입 완료", "user_id": user.id}, status=201)
+
+class LoginView(APIView):
+    """
+    일반 로그인 (email + password)
+    """
+    def post(self, request):
+        serializer = LoginSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        email = serializer.validated_data['email']
+        password = serializer.validated_data['password']
+
+        user = authenticate(username=email, password=password)
+        if user:
+            login(request, user)
+            return Response({"success": f"로그인 성공 {email}"}, status=200)
+        return Response({"error": "로그인 실패"}, status=401)
 
 class NicknameCheckView(APIView):
     """
@@ -123,31 +150,6 @@ class NicknameUpdateView(APIView):
 
         return Response({"detail": "닉네임이 설정되었습니다.", "nickname": nickname}, status=200)
 
-
-
-class RegisterView(generics.CreateAPIView):
-    """
-    username, password, email, school, department를 받아 회원가입
-    """
-    queryset = User.objects.all()
-    serializer_class = RegisterSerializer
-
-
-class LoginView(APIView):
-    """
-    username, password로 로그인
-    """
-    def post(self, request):
-        username = request.data.get('username')
-        password = request.data.get('password')
-        user = authenticate(username=username, password=password)
-
-        if user:
-            if not user.is_active:
-                return Response({"error": "비활성화된 계정입니다. (탈퇴 처리됨)"}, status=status.HTTP_403_FORBIDDEN)
-            
-            return Response({"success": f"로그인 성공 {username}"}, status=status.HTTP_200_OK)
-        return Response({"error": "로그인 실패"}, status=status.HTTP_401_UNAUTHORIZED)
 
 class LogoutView(APIView):
     """
@@ -224,29 +226,3 @@ class BlockUserView(APIView):
             # 차단
             profile.blocked_users.add(target_user)
             return Response({"detail": f"{target_user.username} 차단 완료"}, status=status.HTTP_200_OK)
-
-class ProfileCompletionView(generics.UpdateAPIView):
-    """
-    PATCH /accounts/profile/complete/
-    body: {
-      "school": "ABC University",
-      "admission_year": "2023",
-      "department": "Computer Science"
-    }
-    => 저장 후 is_profile_complete = True
-    """
-    permission_classes = [permissions.IsAuthenticated]
-    serializer_class = ProfileCompletionSerializer
-
-    def get_object(self):
-        return self.request.user.profile
-
-    def perform_update(self, serializer):
-        profile = serializer.save()
-        # 필수 필드가 모두 채워졌다면 is_profile_complete = True
-        if profile.school and profile.admission_year and profile.department:
-            profile.is_profile_complete = True
-            profile.save()
-        else:
-            # 혹시라도 필수 항목이 누락된 경우는 남겨둠
-            pass

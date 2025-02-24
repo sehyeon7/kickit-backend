@@ -37,40 +37,17 @@ class UserProfileSerializer(ModelSerializer):
         ]
         read_only_fields = ['user', 'school_name', 'department_name']
 
-class RegisterSerializer(serializers.ModelSerializer):
+class UserSignupSerializer(serializers.Serializer):
     """
-    회원가입 시 username, password, school, department 등을 입력받는다.
-    phone_number 등 추가로 원하는 필드를 입력받을 수 있음.
+    통합 회원가입 Serializer (일반 + Google 로그인)
     """
-    school = serializers.IntegerField(required=False, write_only=True)
-    department = serializers.IntegerField(required=False, write_only=True)
-
-    class Meta:
-        model = User
-        fields = ['username', 'password', 'email', 'school', 'department']
-        extra_kwargs = {
-            'password': {'write_only': True},
-        }
-
-    def create(self, validated_data):
-        school_id = validated_data.pop('school', None)
-        department_id = validated_data.pop('department', None)
-
-        user = User(
-            username=validated_data['username'],
-            email=validated_data.get('email', '')
-        )
-        user.set_password(validated_data['password'])
-        user.save()
-
-        profile = UserProfile.objects.create(user=user)
-        if school_id:
-            profile.school_id = school_id
-        if department_id:
-            profile.department_id = department_id
-        profile.save()
-
-        return user
+    email = serializers.EmailField()
+    nickname = serializers.CharField(max_length=50)
+    school = serializers.IntegerField()
+    department = serializers.IntegerField()
+    admission_year = serializers.CharField(max_length=10)
+    password = serializers.CharField(write_only=True, required=False)  # 일반 회원가입 용
+    google_sub = serializers.CharField(write_only=True, required=False)  # 구글 로그인 용
 
 class GoogleLoginSerializer(serializers.Serializer):
     id_token = serializers.CharField(write_only=True)
@@ -85,6 +62,24 @@ class GoogleLoginSerializer(serializers.Serializer):
             raise serializers.ValidationError("Google ID Token이 필요합니다.")
         return data
 
+class GoogleAuthCheckSerializer(serializers.Serializer):
+    """
+    구글 ID Token 검증 Serializer
+    """
+    id_token = serializers.CharField(write_only=True)
+
+    # 검증 후 반환할 값들 (유저 존재 여부)
+    email = serializers.EmailField(read_only=True)
+    is_new_user = serializers.BooleanField(read_only=True)
+    google_sub = serializers.CharField(read_only=True)
+
+class LoginSerializer(serializers.Serializer):
+    """
+    일반 로그인 Serializer (email + password)
+    """
+    email = serializers.EmailField()
+    password = serializers.CharField(write_only=True)
+
 class NicknameCheckSerializer(serializers.Serializer):
     nickname = serializers.CharField(max_length=50)
 
@@ -95,8 +90,3 @@ class ProfileUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserProfile
         fields = ['school', 'admission_year', 'department']
-
-class ProfileCompletionSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = UserProfile
-        fields = ['school', 'admission_year', 'department']  # 필요한 필드만
