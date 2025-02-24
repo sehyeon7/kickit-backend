@@ -1,9 +1,9 @@
 from django.urls import path
 from .views import (
     RegisterView, LoginView, LogoutView,
-    SchoolSearchView, DepartmentSearchView,
     BlockUserView, GoogleLoginView,
-    NicknameCheckView, NicknameUpdateView, ProfileUpdateView, ProfileCompletionView
+    NicknameCheckView, NicknameUpdateView, ProfileUpdateView, ProfileCompletionView,
+    SchoolListView, DepartmentListView
 )
 
 urlpatterns = [
@@ -28,8 +28,8 @@ urlpatterns = [
     path('logout/', LogoutView.as_view(), name='logout'),
 
     # 학교/학과 검색
-    path('schools/', SchoolSearchView.as_view(), name='school-search'),
-    path('departments/', DepartmentSearchView.as_view(), name='department-search'),
+    path('schools/', SchoolListView.as_view(), name='school-list'),
+    path('departments/', DepartmentListView.as_view(), name='department-list'),
 
     # 유저 차단
     path('block/<int:user_id>/', BlockUserView.as_view(), name='block-user'),

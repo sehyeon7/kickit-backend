@@ -2,6 +2,7 @@ import os
 from rest_framework.views import APIView
 from django.contrib.auth import login
 from rest_framework.response import Response
+from rest_framework.exceptions import ValidationError
 from rest_framework import status, generics, permissions
 from django.contrib.auth import authenticate, logout
 from django.contrib.auth.models import User
@@ -160,42 +161,35 @@ class LogoutView(APIView):
         return Response({"detail": "로그아웃 되었습니다."}, status=status.HTTP_200_OK)
 
 
-class SchoolSearchView(generics.ListAPIView):
+class SchoolListView(generics.ListAPIView):
     """
-    /accounts/schools/?q=입력
-    => 학교명 검색
+    /accounts/schools/
+    => 전체 학교 목록을 반환
     """
+    queryset = School.objects.all().order_by('name')
     serializer_class = SchoolSerializer
 
-    def get_queryset(self):
-        q = self.request.query_params.get('q', '')
-        return School.objects.filter(name__icontains=q).order_by('name')
 
-
-class DepartmentSearchView(generics.ListAPIView):
+class DepartmentListView(generics.ListAPIView):
     """
-    /accounts/departments/?school_id=?&q=?
-    => 학과명 검색
+    /accounts/departments/?school_id=?
+    => 특정 학교에 속한 학과 리스트만 반환
     """
     serializer_class = DepartmentSerializer
 
     def get_queryset(self):
-        q = self.request.query_params.get('q', '')
         school_id = self.request.query_params.get('school_id')
-        queryset = Department.objects.all()
-
-        if school_id:
-            queryset = queryset.filter(school_id=school_id)
-        if q:
-            queryset = queryset.filter(name__icontains=q)
-        return queryset.order_by('name')
+        if not school_id:
+            raise ValidationError({"error": "school_id query parameter is required"})
+        
+        return Department.objects.filter(school_id=school_id).order_by('name')
 
 class ProfileUpdateView(generics.UpdateAPIView):
     """
     PATCH /accounts/profile/
     body: {
       "school": <school_id>,
-      "student_id": "20230001",
+      "admission_year": "2023",
       "department": <department_id>
     }
     """
@@ -236,7 +230,7 @@ class ProfileCompletionView(generics.UpdateAPIView):
     PATCH /accounts/profile/complete/
     body: {
       "school": "ABC University",
-      "student_id": "20230001",
+      "admission_year": "2023",
       "department": "Computer Science"
     }
     => 저장 후 is_profile_complete = True
@@ -250,7 +244,7 @@ class ProfileCompletionView(generics.UpdateAPIView):
     def perform_update(self, serializer):
         profile = serializer.save()
         # 필수 필드가 모두 채워졌다면 is_profile_complete = True
-        if profile.school and profile.student_id and profile.department:
+        if profile.school and profile.admission_year and profile.department:
             profile.is_profile_complete = True
             profile.save()
         else:
