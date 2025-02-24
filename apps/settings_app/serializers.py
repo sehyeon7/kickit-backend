@@ -19,6 +19,12 @@ class NicknameUpdateSerializer(serializers.Serializer):
     """
     nickname = serializers.CharField(required=True, max_length=50)
 
+class EmailUpdateSerializer(serializers.Serializer):
+    """
+    이메일 변경 시 이용
+    """
+    email = serializers.CharField(required=True, max_length=50)
+
 class PasswordChangeSerializer(serializers.Serializer):
     """
     비밀번호 변경

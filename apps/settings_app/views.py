@@ -8,11 +8,12 @@ from django.contrib.auth import update_session_auth_hash
 from django.shortcuts import get_object_or_404
 from django.contrib.auth import logout
 
+
 from .models import UserSetting
 from .serializers import (
     UserSettingSerializer, NicknameUpdateSerializer,
     PasswordChangeSerializer, UserDeactivateSerializer,
-    LikedPostsSerializer, ScrappedPostsSerializer
+    LikedPostsSerializer, ScrappedPostsSerializer, EmailUpdateSerializer
 )
 from apps.account.models import UserProfile
 from apps.board.models import PostLike, Post
@@ -45,6 +46,23 @@ class NicknameUpdateView(views.APIView):
         profile.save()
 
         return Response({"detail": f"닉네임이 {nickname} 으로 변경되었습니다."}, status=status.HTTP_200_OK)
+
+class EmailUpdateView(views.APIView):
+    """
+    POST: 이메일 변경
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        serializer = EmailUpdateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        email = serializer.validated_data['email']
+        profile = request.user.profile
+        profile.email = email
+        profile.save()
+
+        return Response({"detail": f"이메일이 {email} 으로 변경되었습니다."}, status=status.HTTP_200_OK)
 
 
 class PasswordChangeView(views.APIView):
