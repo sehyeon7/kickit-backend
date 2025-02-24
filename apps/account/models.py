@@ -33,9 +33,6 @@ class UserProfile(models.Model):
     admission_year = models.CharField(max_length=20, blank=True, null=True)
     nickname = models.CharField(max_length=50, blank=True)
 
-    # 프로필 완성 여부
-    is_profile_complete = models.BooleanField(default=False)
-
     # 내가 차단한 유저 목록(M2M)
     blocked_users = models.ManyToManyField(User, related_name='blocked_by', blank=True)
 
