@@ -2,6 +2,9 @@ from rest_framework.serializers import ModelSerializer
 from rest_framework import serializers
 from django.contrib.auth.models import User
 from .models import UserProfile, School, Department
+from django.contrib.auth.tokens import PasswordResetTokenGenerator
+from django.utils.encoding import force_str, force_bytes
+from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 
 class SchoolSerializer(serializers.ModelSerializer):
     class Meta:
@@ -90,3 +93,40 @@ class ProfileUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserProfile
         fields = ['school', 'admission_year', 'department']
+
+class PasswordResetRequestSerializer(serializers.Serializer):
+    """
+    비밀번호 재설정 요청 Serializer (이메일 입력)
+    """
+    email = serializers.EmailField()
+
+    def validate_email(self, value):
+        if not User.objects.filter(email=value).exists():
+            raise serializers.ValidationError("이메일이 존재하지 않습니다.")
+        return value
+
+class PasswordResetSerializer(serializers.Serializer):
+    """
+    비밀번호 재설정 Serializer (새 비밀번호 입력)
+    """
+    uidb64 = serializers.CharField()
+    token = serializers.CharField()
+    new_password = serializers.CharField(write_only=True)
+
+    def validate(self, data):
+        uidb64 = data.get('uidb64')
+        token = data.get('token')
+        new_password = data.get('new_password')
+
+        try:
+            uid = force_str(urlsafe_base64_decode(uidb64))
+            user = User.objects.get(pk=uid)
+        except (User.DoesNotExist, ValueError, TypeError):
+            raise serializers.ValidationError("잘못된 사용자 요청입니다.")
+
+        if not PasswordResetTokenGenerator().check_token(user, token):
+            raise serializers.ValidationError("유효하지 않은 토큰입니다.")
+
+        user.set_password(new_password)
+        user.save()
+        return data

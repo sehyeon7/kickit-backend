@@ -11,15 +11,23 @@ from django.db.models import Q
 
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
+from django.contrib.auth.tokens import PasswordResetTokenGenerator
+from django.utils.encoding import force_bytes
+from django.utils.http import urlsafe_base64_encode
+from django.core.mail import send_mail
+
+
 
 from .models import UserProfile, School, Department
 from .serializers import (
     UserSignupSerializer, GoogleAuthCheckSerializer, LoginSerializer, UserProfileSerializer,
     SchoolSerializer, DepartmentSerializer, GoogleLoginSerializer,
-    NicknameCheckSerializer, NicknameUpdateSerializer, ProfileUpdateSerializer
+    NicknameCheckSerializer, NicknameUpdateSerializer, ProfileUpdateSerializer,
+    PasswordResetRequestSerializer, PasswordResetSerializer
 )
 
 GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID')
+FRONTEND_HOST = os.getenv('FRONTEND_HOST')
 
 class GoogleAuthCheckView(APIView):
     """
@@ -226,3 +234,44 @@ class BlockUserView(APIView):
             # 차단
             profile.blocked_users.add(target_user)
             return Response({"detail": f"{target_user.username} 차단 완료"}, status=status.HTTP_200_OK)
+
+class PasswordResetRequestView(APIView):
+    """
+    비밀번호 재설정 요청 (이메일 전송)
+    """
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        serializer = PasswordResetRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        email = serializer.validated_data['email']
+
+        user = User.objects.get(email=email)
+        token = PasswordResetTokenGenerator().make_token(user)
+        uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
+
+        # 수정 필요
+        reset_url = f"{FRONTEND_HOST}/password-reset/{uidb64}/{token}/"
+
+        # 이메일 전송
+        send_mail(
+            subject="비밀번호 재설정 요청",
+            message=f"비밀번호를 재설정하려면 다음 링크를 클릭하세요: {reset_url}",
+            from_email="no-reply@example.com",
+            recipient_list=[email],
+            fail_silently=False,
+        )
+
+        return Response({"detail": "비밀번호 재설정 이메일이 전송되었습니다."}, status=status.HTTP_200_OK)
+
+class PasswordResetView(APIView):
+    """
+    비밀번호 재설정 (새 비밀번호 설정)
+    """
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        serializer = PasswordResetSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        return Response({"detail": "비밀번호가 성공적으로 변경되었습니다."}, status=status.HTTP_200_OK)

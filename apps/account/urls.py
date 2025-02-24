@@ -3,7 +3,8 @@ from .views import (
     UserSignupView, GoogleAuthCheckView, LoginView, LogoutView,
     BlockUserView,
     NicknameCheckView, NicknameUpdateView, ProfileUpdateView,
-    SchoolListView, DepartmentListView
+    SchoolListView, DepartmentListView,
+    PasswordResetRequestView, PasswordResetView,
 )
 
 urlpatterns = [
@@ -33,4 +34,8 @@ urlpatterns = [
 
     # 유저 차단
     path('block/<int:user_id>/', BlockUserView.as_view(), name='block-user'),
+
+    # 비밀번호 찾기
+    path('password-reset/request/', PasswordResetRequestView.as_view(), name='password-reset-request'),
+    path('password-reset/', PasswordResetView.as_view(), name='password-reset'),
 ]
