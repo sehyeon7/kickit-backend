@@ -33,6 +33,11 @@ class UserProfile(models.Model):
     admission_year = models.CharField(max_length=20, blank=True, null=True)
     nickname = models.CharField(max_length=50, blank=True)
 
+    profile_image = models.URLField(
+        max_length=500, blank=True, null=True, 
+        default="https://your-supabase-url.com/default_profile.png" #수정 필요
+    )
+
     # 내가 차단한 유저 목록(M2M)
     blocked_users = models.ManyToManyField(User, related_name='blocked_by', blank=True)
 
