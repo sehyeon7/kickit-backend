@@ -2,9 +2,9 @@ from django.urls import path
 from .views import (
     UserSignupView, GoogleAuthCheckView, LoginView, LogoutView,
     BlockUserView,
-    NicknameCheckView, NicknameUpdateView, ProfileUpdateView,
+    NicknameCheckView, ProfileUpdateView,
     SchoolListView, DepartmentListView,
-    PasswordResetRequestView, PasswordResetView,
+    PasswordResetRequestView
 )
 
 urlpatterns = [
@@ -23,7 +23,6 @@ urlpatterns = [
 
     # 닉네임 체크 & 설정
     path('nickname/check/', NicknameCheckView.as_view(), name='nickname-check'),
-    path('nickname/', NicknameUpdateView.as_view(), name='nickname-update'),
 
     # 학교/학번/학과 입력
     path('profile/', ProfileUpdateView.as_view(), name='profile-update'),
@@ -37,5 +36,4 @@ urlpatterns = [
 
     # 비밀번호 찾기
     path('password-reset/request/', PasswordResetRequestView.as_view(), name='password-reset-request'),
-    path('password-reset/', PasswordResetView.as_view(), name='password-reset'),
 ]
