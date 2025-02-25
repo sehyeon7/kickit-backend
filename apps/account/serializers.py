@@ -31,6 +31,7 @@ class UserProfileSerializer(ModelSerializer):
     user = UserSerializer(read_only=True)
     school_name = serializers.CharField(source='school.name', read_only=True)
     department_name = serializers.CharField(source='department.name', read_only=True)
+    profile_image = serializers.URLField(required=False) 
     class Meta:
         model = UserProfile
         fields = [
@@ -84,10 +85,17 @@ class LoginSerializer(serializers.Serializer):
     password = serializers.CharField(write_only=True)
 
 class NicknameCheckSerializer(serializers.Serializer):
-    nickname = serializers.CharField(max_length=50)
+    nickname = serializers.CharField(
+        min_length=3,  
+        max_length=20, 
+        allow_blank=False,
+        error_messages={
+            "min_length": "닉네임은 최소 3자 이상이어야 합니다.",
+            "max_length": "닉네임은 최대 20자 이하로 설정해주세요.",
+            "blank": "닉네임은 공백일 수 없습니다."
+        }
+    )
 
-class NicknameUpdateSerializer(serializers.Serializer):
-    nickname = serializers.CharField(max_length=50)
 
 class ProfileUpdateSerializer(serializers.ModelSerializer):
     class Meta:
@@ -102,7 +110,7 @@ class PasswordResetRequestSerializer(serializers.Serializer):
 
     def validate_email(self, value):
         if not User.objects.filter(email=value).exists():
-            raise serializers.ValidationError("이메일이 존재하지 않습니다.")
+            raise serializers.ValidationError("해당 이메일의 계정이 존재하지 않습니다.")
         return value
 
 class PasswordResetSerializer(serializers.Serializer):
