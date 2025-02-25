@@ -26,10 +26,8 @@ class Post(models.Model):
     """
     board = models.ForeignKey(Board, on_delete=models.CASCADE, related_name='posts')
     author = models.ForeignKey(User, on_delete=models.CASCADE)
-    title = models.CharField(max_length=200)
     content = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
-    link_url = models.URLField(blank=True, null=True)  # 게시글에 링크 첨부
     scrapped_by = models.ManyToManyField(User, related_name='scrapped_posts', blank=True)
     hidden_by = models.ManyToManyField(User, related_name='hidden_posts', blank=True)
 
