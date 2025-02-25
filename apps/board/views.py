@@ -150,6 +150,7 @@ class HidePostView(generics.GenericAPIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, board_id, post_id):
+        board = get_object_or_404(Board, id=board_id)
         post = get_object_or_404(Post, id=post_id, board_id=board_id)
         user = request.user
 
