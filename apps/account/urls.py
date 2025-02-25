@@ -4,7 +4,7 @@ from .views import (
     BlockUserView,
     NicknameCheckView, ProfileUpdateView,
     SchoolListView, DepartmentListView,
-    PasswordResetRequestView
+    PasswordResetRequestView, TokenRefreshView
 )
 
 urlpatterns = [
@@ -20,6 +20,8 @@ urlpatterns = [
     # 로그아웃
     path('logout/', LogoutView.as_view(), name='logout'),
 
+    # 토큰 갱신
+    path('token-refresh/', TokenRefreshView.as_view(), name='token-refresh'),
 
     # 닉네임 체크 & 설정
     path('nickname/check/', NicknameCheckView.as_view(), name='nickname-check'),
