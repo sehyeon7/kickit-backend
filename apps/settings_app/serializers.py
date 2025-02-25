@@ -55,3 +55,9 @@ class ScrappedPostsSerializer(serializers.Serializer):
     title = serializers.CharField()
     board_name = serializers.CharField()
     created_at = serializers.DateTimeField()
+
+class ProfileImageUpdateSerializer(serializers.Serializer):
+    """
+    프로필 이미지 변경 Serializer
+    """
+    image = serializers.ImageField()
