@@ -1,4 +1,5 @@
 import os
+import re
 from rest_framework.views import APIView
 from django.contrib.auth import login
 from rest_framework.response import Response
@@ -8,6 +9,10 @@ from django.contrib.auth import authenticate, logout
 from django.contrib.auth.models import User
 from django.shortcuts import get_object_or_404
 from django.db.models import Q
+from django.utils.encoding import force_str
+from django.utils.http import urlsafe_base64_decode
+import random
+import string
 
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
@@ -15,6 +20,9 @@ from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode
 from django.core.mail import send_mail
+from rest_framework_simplejwt.tokens import RefreshToken, AccessToken
+from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken
+from rest_framework_simplejwt.exceptions import TokenError
 
 
 
@@ -22,12 +30,33 @@ from .models import UserProfile, School, Department
 from .serializers import (
     UserSignupSerializer, GoogleAuthCheckSerializer, LoginSerializer, UserProfileSerializer,
     SchoolSerializer, DepartmentSerializer, GoogleLoginSerializer,
-    NicknameCheckSerializer, NicknameUpdateSerializer, ProfileUpdateSerializer,
+    NicknameCheckSerializer, ProfileUpdateSerializer,
     PasswordResetRequestSerializer, PasswordResetSerializer
 )
 
 GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID')
 FRONTEND_HOST = os.getenv('FRONTEND_HOST')
+
+def validate_password(password):
+    """
+    비밀번호 보안 검증: 최소 8자 이상, 숫자 및 특수문자 포함
+    """
+    if len(password) < 8:
+        raise ValueError("비밀번호는 최소 8자 이상이어야 합니다.")
+    if not re.search(r"[0-9]", password):
+        raise ValueError("비밀번호는 숫자를 포함해야 합니다.")
+    if not re.search(r"[!@#$%^&*(),.?\":{}|<>]", password):
+        raise ValueError("비밀번호는 특수문자를 포함해야 합니다.")
+    return password
+
+def set_token_on_response_cookie(user: User) -> Response:
+    token = RefreshToken.for_user(user)
+    user_profile = UserProfile.objects.get(user=user)
+    user_profile_serializer = UserProfileSerializer(user_profile)
+    res = Response(user_profile_serializer.data, status=status.HTTP_200_OK)
+    res.set_cookie('refresh_token', value=str(token), samesite='None', httponly=True, secure=True)
+    res.set_cookie('access_token', value=str(token.access_token), samesite='None', httponly=True, secure=True)
+    return res
 
 class GoogleAuthCheckView(APIView):
     """
@@ -55,8 +84,7 @@ class GoogleAuthCheckView(APIView):
             profile = UserProfile.objects.filter(google_sub=google_sub).first()
             if profile:
                 user = profile.user
-                login(request, user)
-                return Response({"email": email, "is_new_user": False, "user_id": user.id}, status=200)
+                return set_token_on_response_cookie(user) 
 
             return Response({"email": email, "is_new_user": True, "google_sub": google_sub}, status=200)
 
@@ -86,6 +114,23 @@ class UserSignupView(APIView):
 
         if User.objects.filter(email=email).exists():
             return Response({"error": "이미 가입된 이메일입니다."}, status=400)
+        
+        # ✅ 학교 및 학과 존재 여부 확인
+        school = School.objects.filter(id=school_id).first()
+        department = Department.objects.filter(id=department_id).first()
+        if not school or not department:
+            return Response({"error": "잘못된 학교 또는 학과 ID입니다."}, status=400)
+
+        # 일반 회원가입 시 패스워드 필수
+        if not google_sub and not password:
+            return Response({"error": "google_sub 또는 password 중 하나는 필수입니다."}, status=400)
+
+        # 일반 회원가입 시 비밀번호 보안 검증
+        if password:
+            try:
+                validate_password(password)
+            except ValueError as e:
+                return Response({"password": [str(e)]}, status=400)
 
         user = User.objects.create(username=email, email=email)
         if password:
@@ -99,24 +144,40 @@ class UserSignupView(APIView):
             school_id=school_id, department_id=department_id,
             admission_year=admission_year
         )
-        login(request, user)
-        return Response({"success": "회원가입 완료", "user_id": user.id}, status=201)
+        return set_token_on_response_cookie(user, status_code=status.HTTP_201_CREATED)
 
 class LoginView(APIView):
     """
     일반 로그인 (email + password)
     """
+    permission_classes = [permissions.AllowAny]
+
     def post(self, request):
         serializer = LoginSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         email = serializer.validated_data['email']
         password = serializer.validated_data['password']
 
+        # 이메일 또는 비밀번호 미입력 시 오류 반환
+        if not email or not password:
+            return Response({"error": "이메일과 비밀번호를 모두 입력해주세요."}, status=400)
+        
+        # 이메일 존재 여부 확인
+        user = User.objects.filter(email=email).first()
+        if not user:
+            return Response({"error": "이메일이 존재하지 않습니다."}, status=400)
+        
+        # 비활성화된 계정인지 확인
+        if not user.is_active:
+            return Response({"error": "비활성화된 계정입니다. 관리자에게 문의하세요."}, status=403)
+        
         user = authenticate(username=email, password=password)
-        if user:
-            login(request, user)
-            return Response({"success": f"로그인 성공 {email}"}, status=200)
-        return Response({"error": "로그인 실패"}, status=401)
+        if not user:
+            if not User.objects.filter(email=email).exists():
+                return Response({"error": "이메일이 존재하지 않습니다."}, status=400)
+            return Response({"error": "비밀번호가 틀렸습니다."}, status=400)
+
+        return set_token_on_response_cookie(user)
 
 class NicknameCheckView(APIView):
     """
@@ -136,39 +197,60 @@ class NicknameCheckView(APIView):
             return Response({"available": False}, status=200)
         return Response({"available": True}, status=200)
 
-class NicknameUpdateView(APIView):
-    """
-    로그인된 사용자(소셜 가입 후) → 닉네임 설정
-    """
-    permission_classes = [permissions.IsAuthenticated]
-
-    def post(self, request):
-        serializer = NicknameUpdateSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        nickname = serializer.validated_data['nickname']
-
-        # 중복 체크
-        exists = UserProfile.objects.filter(nickname__iexact=nickname).exclude(user=request.user).exists()
-        if exists:
-            return Response({"error": "이미 사용 중인 닉네임입니다."}, status=400)
-
-        profile = request.user.profile
-        profile.nickname = nickname
-        profile.save()
-
-        return Response({"detail": "닉네임이 설정되었습니다.", "nickname": nickname}, status=200)
-
-
 class LogoutView(APIView):
     """
     로그아웃
-    - 세션 인증 기준 (Django default)
+    - JWT 토큰을 블랙리스트에 등록하여 무효화
+    - HTTP-Only 쿠키에서 `access_token`, `refresh_token`을 삭제
+    - `refresh_token`을 요청 Body에서도 허용
     """
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
-        logout(request)  # Django의 logout
-        return Response({"detail": "로그아웃 되었습니다."}, status=status.HTTP_200_OK)
+        # 인증되지 않은 사용자 접근 차단
+        if not request.user.is_authenticated:
+            return Response(
+                {"detail": "please signin"}, status=status.HTTP_401_UNAUTHORIZED
+            )
+        
+        # 요청 Body에서 refresh_token 확인 (쿠키에 없을 경우 대비)
+        refresh_token = request.data.get("refresh_token") or request.COOKIES.get("refresh_token")
+        if not refresh_token:
+            return Response({"error": "Refresh token이 없습니다."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            token = RefreshToken(refresh_token)
+            token.blacklist()  # 블랙리스트에 등록
+
+            response = Response({"detail": "로그아웃 되었습니다."}, status=status.HTTP_200_OK)
+            response.delete_cookie("access_token")
+            response.delete_cookie("refresh_token")
+            return response
+
+        except TokenError:
+            return Response({"error": "유효하지 않은 토큰입니다."}, status=status.HTTP_400_BAD_REQUEST)
+
+class TokenRefreshView(APIView):
+    """
+    JWT Access Token 재발급
+    """
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        refresh_token = request.COOKIES.get("refresh_token")
+        if not refresh_token:
+            return Response({"error": "refresh_token이 없습니다."}, status=status.HTTP_401_UNAUTHORIZED)
+        
+        try:
+            refresh = RefreshToken(refresh_token)
+            new_access_token = str(refresh.access_token)
+
+            response = Response({"message": "Access Token이 갱신되었습니다."}, status=status.HTTP_200_OK)
+            response.set_cookie('access_token', value=new_access_token, secure=True, samesite='None')
+            return response
+
+        except TokenError:
+            return Response({"error": "유효하지 않은 refresh_token 입니다. 다시 로그인해주세요."}, status=status.HTTP_401_UNAUTHORIZED)
 
 
 class SchoolListView(generics.ListAPIView):
@@ -209,9 +291,6 @@ class ProfileUpdateView(generics.UpdateAPIView):
     def get_object(self):
         return self.request.user.profile
 
-    def partial_update(self, request, *args, **kwargs):
-        return super().partial_update(request, *args, **kwargs)
-
 
 class BlockUserView(APIView):
     """
@@ -225,15 +304,29 @@ class BlockUserView(APIView):
         if target_user == request.user:
             return Response({"error": "자기 자신은 차단할 수 없습니다."}, status=status.HTTP_400_BAD_REQUEST)
 
+        action = request.data.get("action")
+
+        if action not in ["block", "unblock"]:
+            return Response(
+                {"error": "올바른 action 값을 제공해야 합니다. ('block' 또는 'unblock')"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
         profile = request.user.profile
-        if target_user in profile.blocked_users.all():
-            # 이미 차단 중이라면 => 차단 해제
-            profile.blocked_users.remove(target_user)
-            return Response({"detail": f"{target_user.username} 차단 해제"}, status=status.HTTP_200_OK)
-        else:
-            # 차단
+
+        if action == "block":
             profile.blocked_users.add(target_user)
-            return Response({"detail": f"{target_user.username} 차단 완료"}, status=status.HTTP_200_OK)
+            return Response(
+                {"message": "사용자를 차단했습니다.", "blocked_user_id": target_user.id},
+                status=status.HTTP_200_OK
+            )
+        elif action == "unblock":
+            profile.blocked_users.remove(target_user)
+            return Response(
+                {"message": "사용자 차단을 해제했습니다.", "blocked_user_id": target_user.id},
+                status=status.HTTP_200_OK
+            )
+        
 
 class PasswordResetRequestView(APIView):
     """
@@ -241,37 +334,36 @@ class PasswordResetRequestView(APIView):
     """
     permission_classes = [permissions.AllowAny]
 
+    def generate_temp_password(self, length=10):
+        """ 랜덤한 임시 비밀번호 생성 """
+        characters = string.ascii_letters + string.digits
+        return ''.join(random.choices(characters, k=length))
+
     def post(self, request):
         serializer = PasswordResetRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         email = serializer.validated_data['email']
 
-        user = User.objects.get(email=email)
-        token = PasswordResetTokenGenerator().make_token(user)
-        uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            return Response({"error": "해당 이메일의 계정이 존재하지 않습니다."}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # 랜덤한 임시 비밀번호 생성 및 설정
+        temp_password = self.generate_temp_password()
+        user.set_password(temp_password)
+        user.save()
 
-        # 수정 필요
-        reset_url = f"{FRONTEND_HOST}/password-reset/{uidb64}/{token}/"
+        try:
+            # 이메일로 임시 비밀번호 전송
+            send_mail(
+                subject="비밀번호 재설정 안내",
+                message=f"임시 비밀번호: {temp_password}\n로그인 후 비밀번호를 변경해주세요.",
+                from_email="no-reply@example.com",
+                recipient_list=[email],
+                fail_silently=False,
+            )
+        except Exception:
+            return Response({"error": "이메일을 전송하는 중 오류가 발생했습니다. 다시 시도해주세요."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-        # 이메일 전송
-        send_mail(
-            subject="비밀번호 재설정 요청",
-            message=f"비밀번호를 재설정하려면 다음 링크를 클릭하세요: {reset_url}",
-            from_email="no-reply@example.com",
-            recipient_list=[email],
-            fail_silently=False,
-        )
-
-        return Response({"detail": "비밀번호 재설정 이메일이 전송되었습니다."}, status=status.HTTP_200_OK)
-
-class PasswordResetView(APIView):
-    """
-    비밀번호 재설정 (새 비밀번호 설정)
-    """
-    permission_classes = [permissions.AllowAny]
-
-    def post(self, request):
-        serializer = PasswordResetSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-
-        return Response({"detail": "비밀번호가 성공적으로 변경되었습니다."}, status=status.HTTP_200_OK)
+        return Response({"detail": "임시 비밀번호가 이메일로 발송되었습니다."}, status=status.HTTP_200_OK)
