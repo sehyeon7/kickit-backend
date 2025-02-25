@@ -1,6 +1,6 @@
 from django.urls import path
 from .views import (
-    BoardListCreateView, BoardDetailView,
+    BoardListView,
     PostListView,
     PostListCreateView, PostDetailView,
     HidePostView, BlockAuthorFromPostView,
@@ -11,8 +11,7 @@ from .views import (
 
 urlpatterns = [
     # Board
-    path('', BoardListCreateView.as_view(), name='board-list'),
-    path('<int:pk>/', BoardDetailView.as_view(), name='board-detail'),
+    path('', BoardListView.as_view(), name='board-list'),
 
     # 전체 게시물 + 검색
     path('posts/', PostListView.as_view(), name='all-post-list'),

@@ -5,6 +5,9 @@ import re
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
+from django.db.models import Q
+from rest_framework.exceptions import ValidationError, PermissionDenied
+
 
 from .models import Board, Post, Comment, PostLike, CommentLike
 from .serializers import (
@@ -14,22 +17,14 @@ from .serializers import (
 from apps.notification.utils import send_notification
 from django.contrib.auth.models import User
 
-class BoardListCreateView(generics.ListCreateAPIView):
+class BoardListView(generics.ListAPIView):
     """
-    게시판(Board) 목록 조회 및 생성
-    """
-    queryset = Board.objects.all()
-    serializer_class = BoardSerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
-
-
-class BoardDetailView(generics.RetrieveUpdateDestroyAPIView):
-    """
-    특정 Board 상세/수정/삭제
+    게시판(Board) 목록 조회
     """
     queryset = Board.objects.all()
     serializer_class = BoardSerializer
-    permission_classes = [permissions.IsAdminUser]  # 관리자만 수정 가능
+    permission_classes = [permissions.AllowAny]
+
 
 class PostListView(generics.ListAPIView):
     """
@@ -47,7 +42,6 @@ class PostListView(generics.ListAPIView):
         queryset = Post.objects.all().order_by('-created_at')
         if search:
             queryset = queryset.filter(
-                Q(title__icontains=search) |
                 Q(content__icontains=search)
             )
 
@@ -76,16 +70,29 @@ class PostListCreateView(generics.ListCreateAPIView):
         return PostSerializer
 
     def get_queryset(self):
+        """
+        특정 Board에 속한 게시글 목록 조회
+        - 숨긴 게시글 제외
+        - 차단한 사용자 게시글 제외
+        """
         board_id = self.kwargs['board_id']
+        get_object_or_404(Board, id=board_id)
+
         user = self.request.user
         queryset = Post.objects.filter(board_id=board_id).order_by('-created_at')
         if user.is_authenticated:
             queryset = queryset.exclude(hidden_by=user)
+            blocked_users = user.profile.blocked_users.all()
+            queryset = queryset.exclude(author__in=blocked_users)
         return queryset
     
     def perform_create(self, serializer):
+        """
+        게시글 생성 시 board_id와 작성자를 자동으로 추가
+        """
         board_id = self.kwargs['board_id']
-        serializer.save(board_id=board_id, author=self.request.user)
+        board = get_object_or_404(Board, id=board_id)
+        serializer.save(board=board, author=self.request.user)
 
 
 class PostDetailView(generics.RetrieveUpdateDestroyAPIView):
@@ -98,7 +105,19 @@ class PostDetailView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
 
     def get_queryset(self):
-        return Post.objects.filter(board_id=self.kwargs['board_id'])
+        board_id = self.kwargs['board_id']
+        get_object_or_404(Board, id=board_id)
+        return Post.objects.filter(board_id=board_id)
+    
+    def get_object(self):
+        """
+        게시글이 실제 존재하는지 확인
+        """
+        board_id = self.kwargs.get("board_id")
+        post_id = self.kwargs.get("pk")
+        board = get_object_or_404(Board, id=board_id)
+        post = get_object_or_404(Post, id=post_id, board=board)
+        return post
 
     def get_serializer_class(self):
         if self.request.method in ['PUT', 'PATCH']:
@@ -108,13 +127,17 @@ class PostDetailView(generics.RetrieveUpdateDestroyAPIView):
     def perform_update(self, serializer):
         post = self.get_object()
         if post.author != self.request.user:
-            from rest_framework.exceptions import PermissionDenied
             raise PermissionDenied("본인이 작성한 글만 수정할 수 있습니다.")
+        
+        if 'board_id' not in self.request.data:
+            raise ValidationError({"board_id": ["이 필드는 필수입니다."]})
+        if 'content' not in self.request.data:
+            raise ValidationError({"content": ["이 필드는 필수입니다."]})
+        
         serializer.save()
     
     def perform_destroy(self, instance):
         if instance.author != self.request.user:
-            from rest_framework.exceptions import PermissionDenied
             raise PermissionDenied("본인이 작성한 글만 삭제할 수 있습니다.")
         instance.delete()
 
