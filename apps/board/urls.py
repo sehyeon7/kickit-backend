@@ -4,7 +4,7 @@ from .views import (
     PostListView,
     PostListCreateView, PostDetailView,
     HidePostView,
-    CommentListCreateView, ReplyListCreateView,
+    CommentListCreateView,
     CommentLikeToggleView,
     PostLikeToggleView, ScrapToggleView
 )
@@ -25,7 +25,6 @@ urlpatterns = [
 
     # Comment (일반 댓글 / 대댓글)
     path('<int:board_id>/posts/<int:post_id>/comments/', CommentListCreateView.as_view(), name='comment-list-create'),
-    path('<int:board_id>/posts/<int:post_id>/comments/<int:comment_id>/replies/', ReplyListCreateView.as_view(), name='reply-list-create'),
 
     # Comment Like
     path('<int:board_id>/posts/<int:post_id>/comments/<int:comment_id>/like/', CommentLikeToggleView.as_view(), name='comment-like-toggle'),

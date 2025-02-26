@@ -18,29 +18,44 @@ class CommentSerializer(serializers.ModelSerializer):
     대댓글 구조를 직렬화할 때, 대댓글을 재귀적으로 보여줄 수도 있음
     (여기서는 'replies'를 별도 처리 혹은 필요시 중첩 시리얼라이저로 구성)
     """
-    author_username = serializers.SerializerMethodField()
-    replies = serializers.SerializerMethodField()
+    user_id = serializers.IntegerField(source='author.id', read_only=True)
+    user_profile_image = serializers.SerializerMethodField()
+    user_nickname = serializers.SerializerMethodField()
+    reply_target_user_nickname = serializers.SerializerMethodField()
     like_count = serializers.SerializerMethodField()
+    is_liked = serializers.SerializerMethodField()
+    replies = serializers.SerializerMethodField()
 
     class Meta:
         model = Comment
         fields = [
-            'id', 'post', 'author_username', 'parent',
-            'content', 'created_at', 'replies', 'is_reply', 'like_count'
+            'id', 'user_id', 'user_profile_image', 'user_nickname',
+            'reply_target_user_nickname', 'content', 'created_at',
+            'like_count', 'is_liked', 'replies'
         ]
-        read_only_fields = ['post', 'author_username', 'is_reply', 'like_count']
+        read_only_fields = ['user_id', 'user_profile_image', 'user_nickname', 'reply_target_user_nickname', 'like_count', 'is_liked']
 
-    def get_replies(self, obj):
-        # 자식 댓글(대댓글) 목록을 직렬화
-        if obj.replies.exists():
-            return CommentSerializer(obj.replies.all(), many=True).data
-        return None
+    def get_user_profile_image(self, obj):
+        return obj.author.profile.image.url if hasattr(obj.author, 'profile') and obj.author.profile.image else None
+    
+    def get_user_nickname(self, obj):
+        return obj.author.profile.nickname if hasattr(obj.author, 'profile') else obj.author.username
+    
+    def get_reply_target_user_nickname(self, obj):
+        return obj.parent.author.profile.nickname if obj.parent and hasattr(obj.parent.author, 'profile') else None
     
     def get_like_count(self, obj):
         return obj.likes.count()
     
-    def get_author_username(self, obj):
-        return obj.author.profile.display_name if hasattr(obj.author, 'profile') else "알 수 없음"
+    def get_is_liked(self, obj):
+        user = self.context.get('request').user
+        return obj.likes.filter(id=user.id).exists() if user.is_authenticated else False
+    
+    def get_replies(self, obj):
+        if obj.replies.exists():
+            return CommentSerializer(obj.replies.all(), many=True, context=self.context).data
+        return []
+    
 
 class CommentLikeSerializer(serializers.ModelSerializer):
     comment_id = serializers.IntegerField(write_only=True)

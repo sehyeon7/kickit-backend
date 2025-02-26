@@ -176,66 +176,72 @@ class CommentListCreateView(generics.ListCreateAPIView):
         return Comment.objects.filter(post_id=post_id, parent__isnull=True).order_by('-created_at')
         # parent가 없는 최상위 댓글만 조회 (대댓글은 replies 필드에서)
 
-    def perform_create(self, serializer):
-        post_id = self.kwargs['post_id']
-        comment = serializer.save(author=self.request.user, post_id=post_id)
-        serializer.save(author=self.request.user, post_id=post_id)
+    def create(self, request, *args, **kwargs):
+        """ 댓글 작성 시 예외 처리를 추가하여 상세한 에러 메시지 반환 """
+        user = request.user
+        if not user.is_authenticated:
+            return Response({"error": "로그인이 필요합니다."}, status=status.HTTP_401_UNAUTHORIZED)
 
-        # 1) 본인이 작성한 글에 댓글이 달렸을 때
+        post_id = kwargs.get('post_id')
         post = get_object_or_404(Post, id=post_id)
-        post_author = post.author
-        setting = getattr(post_author, 'setting', None)
-        if setting and setting.notify_when_commented:
-            message = f"'{post.title}' 글에 새 댓글이 달렸습니다!"
-            send_notification(post_author, message, post_id = comment.post_id, comment_id=comment.id)
 
-        # 2) 대댓글인 경우 -> 부모 댓글 작성자에게 알림
-        if comment.parent:
-            parent_comment_author = comment.parent.author
-            if parent_comment_author != post_author:  # 중복 알림 방지
-                parent_setting = getattr(parent_comment_author, 'setting', None)
-                if parent_setting and parent_setting.notify_when_commented:
-                    message = f"당신의 댓글에 대댓글이 달렸습니다!"
-                    send_notification(parent_comment_author, message, post_id = comment.post_id, comment_id=comment.id)
+        parent_id = request.data.get("parent")
+        parent_comment = None
 
-        # 3) 멘션(@username) 파싱 로직
-        mention_pattern = r'@(\w+)'  # 예시: @ 뒤에 알파벳/숫자/_ 를 닉네임으로 가정
-        matches = re.findall(mention_pattern, comment.content)
-        for nickname in matches:
-            # nickname이 실제 User의 profile.nickname과 일치하는지 확인
+        # 부모 댓글이 있을 때만 검증 (최상위 댓글이면 검증 안 함)
+        if parent_id:
+            parent_comment = Comment.objects.filter(id=parent_id, post=post).first()
+            if not parent_comment:
+                return Response({"error": "부모 댓글을 찾을 수 없습니다."}, status=status.HTTP_404_NOT_FOUND)
+
+        # Mentions 데이터 검증
+        mention_usernames = request.data.get("mentions", [])
+        if mention_usernames and not isinstance(mention_usernames, list):
+            return Response({"error": "mentions 필드는 리스트 형식이어야 합니다."}, status=status.HTTP_400_BAD_REQUEST)
+
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        comment = serializer.save(author=user, post=post, parent=parent_comment)
+
+        # 댓글/대댓글 알림 처리
+        if parent_comment:
+            # 대댓글: 부모 댓글 작성자에게 알림
+            parent_comment_author = parent_comment.author
+            if getattr(parent_comment_author, 'setting', None) and parent_comment_author.setting.notify_when_commented:
+                send_notification(
+                    parent_comment_author,
+                    "당신의 댓글에 대댓글이 달렸습니다!",
+                    post_id=comment.post_id,
+                    comment_id=comment.id
+                )
+        else:
+            # 댓글: 게시글 작성자에게 알림
+            post_author = post.author
+            if getattr(post_author, 'setting', None) and post_author.setting.notify_when_commented:
+                send_notification(
+                    post_author,
+                    f"'{post.title}' 글에 새 댓글이 달렸습니다!",
+                    post_id=comment.post_id,
+                    comment_id=comment.id
+                )
+
+        # 3) 멘션(@username) 알림
+        for nickname in mention_usernames:
             try:
-                # 여기서는 Profile.nickname 기준 예시. (user.username 으로 할 수도 있음)
-                user_obj = User.objects.get(profile__nickname=nickname)
+                mentioned_user = User.objects.get(profile__nickname=nickname)
+                if getattr(mentioned_user, 'setting', None) and mentioned_user.setting.notify_when_mentioned:
+                    send_notification(
+                        mentioned_user,
+                        f"'{user.profile.nickname}'님이 댓글에서 당신을 언급했습니다.",
+                        post_id=comment.post_id,
+                        comment_id=comment.id
+                    )
             except User.DoesNotExist:
-                continue
+                continue  # 존재하지 않는 유저는 무시
 
-            mention_setting = getattr(user_obj, 'setting', None)
-            if mention_setting and mention_setting.notify_when_mentioned:
-                message = f"'{self.request.user.profile.nickname or self.request.user.username}'님이 " \
-                        f"댓글에서 당신을 언급했습니다: {comment.content}"
-                send_notification(user_obj, message, post_id = comment.post_id, comment_id=comment.id)
-
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
         
         
-
-
-class ReplyListCreateView(generics.ListCreateAPIView):
-    """
-    특정 댓글에 대한 대댓글 목록 & 작성
-    /board/<board_id>/posts/<post_id>/comments/<comment_id>/replies/
-    """
-    serializer_class = CommentSerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
-
-    def get_queryset(self):
-        comment_id = self.kwargs['comment_id']
-        return Comment.objects.filter(parent_id=comment_id).order_by('-created_at')
-
-    def perform_create(self, serializer):
-        post_id = self.kwargs['post_id']
-        comment_id = self.kwargs['comment_id']
-        serializer.save(author=self.request.user, post_id=post_id, parent_id=comment_id)
-
 class CommentLikeToggleView(generics.GenericAPIView):
     """
     댓글 좋아요 토글
