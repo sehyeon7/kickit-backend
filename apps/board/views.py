@@ -10,6 +10,7 @@ from rest_framework.exceptions import ValidationError, PermissionDenied
 
 
 from .models import Board, Post, Comment, PostLike, CommentLike
+from apps.settings_app.models import UserSetting
 from .serializers import (
     BoardSerializer, PostSerializer, CommentSerializer, PostCreateUpdateSerializer, PostImageSerializer
 )
@@ -207,7 +208,8 @@ class CommentListCreateView(generics.ListCreateAPIView):
         if parent_comment:
             # 대댓글: 부모 댓글 작성자에게 알림
             parent_comment_author = parent_comment.author
-            if getattr(parent_comment_author, 'setting', None) and parent_comment_author.setting.notify_when_commented:
+            user_setting = UserSetting.objects.filter(user=parent_comment.author).first()
+            if user_setting and user_setting.notification_categories.filter(name="Commented").exists():
                 send_notification(
                     parent_comment_author,
                     "당신의 댓글에 대댓글이 달렸습니다!",
@@ -217,7 +219,8 @@ class CommentListCreateView(generics.ListCreateAPIView):
         else:
             # 댓글: 게시글 작성자에게 알림
             post_author = post.author
-            if getattr(post_author, 'setting', None) and post_author.setting.notify_when_commented:
+            user_setting = UserSetting.objects.filter(user=post.author).first()
+            if user_setting and user_setting.notification_categories.filter(name="Commented").exists():
                 send_notification(
                     post_author,
                     f"'{post.title}' 글에 새 댓글이 달렸습니다!",
@@ -229,7 +232,8 @@ class CommentListCreateView(generics.ListCreateAPIView):
         for nickname in mention_usernames:
             try:
                 mentioned_user = User.objects.get(profile__nickname=nickname)
-                if getattr(mentioned_user, 'setting', None) and mentioned_user.setting.notify_when_mentioned:
+                user_setting = UserSetting.objects.filter(user=mentioned_user).first()
+                if user_setting and user_setting.notification_categories.filter(name="Mentioned").exists():
                     send_notification(
                         mentioned_user,
                         f"'{user.profile.nickname}'님이 댓글에서 당신을 언급했습니다.",
@@ -263,6 +267,17 @@ class CommentLikeToggleView(generics.GenericAPIView):
         else:
             CommentLike.objects.create(comment=comment, user=user)
             is_liked = True
+        
+        # 댓글 작성자의 설정된 알림 카테고리에 "Liked"가 있는 경우만 알림 전송
+            comment_author = comment.author
+            user_setting = UserSetting.objects.filter(user=comment.author).first()
+            if user_setting and user_setting.notification_categories.filter(name="Liked").exists():
+                send_notification(
+                    comment_author,
+                    "당신의 댓글이 좋아요를 받았습니다!",
+                    post_id=comment.post_id,
+                    comment_id=comment.id
+                )
         
         # 업데이트된 좋아요 개수
         like_count = comment.likes.count()
@@ -298,8 +313,8 @@ class PostLikeToggleView(generics.GenericAPIView):
             is_liked = True
             # 알림 로직
             post_author = post.author
-            setting = getattr(post_author, 'setting', None)
-            if setting and setting.notify_when_post_liked:
+            user_setting = UserSetting.objects.filter(user=post.author).first()
+            if user_setting and user_setting.notification_categories.filter(name="Liked").exists():
                 message = f"당신의 글 '{post.title}'가 좋아요를 받았습니다."
                 send_notification(post_author, message, post_id=post.id)
 
