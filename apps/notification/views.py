@@ -6,6 +6,8 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from .models import Notification
 from .serializers import NotificationSerializer
+from rest_framework import status
+
 
 class NotificationListView(generics.ListAPIView):
     """
@@ -32,10 +34,21 @@ class NotificationDetailView(generics.RetrieveUpdateAPIView):
         # 내 알림만 접근 가능
         return Notification.objects.filter(user=self.request.user)
 
+    def patch(self, request, *args, **kwargs):
+        notification = self.get_object()
+
+        notification.is_read = True
+        notification.save()
+        return Response({"detail": "알림이 읽음 처리되었습니다."}, status=status.HTTP_200_OK)
+
 class NotificationMarkAllReadView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
         notifications = Notification.objects.filter(user=request.user, is_read=False)
+
+        if not notifications.exists():
+            return Response({"detail": "읽지 않은 알림이 없습니다."}, status=status.HTTP_200_OK)
+        
         notifications.update(is_read=True)
         return Response({"detail": "모든 알림이 읽음 처리되었습니다."})
