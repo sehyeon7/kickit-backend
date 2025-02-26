@@ -10,12 +10,12 @@ from django.contrib.auth import logout
 from .supabase_utils import upload_image_to_supabase
 
 
-from .models import UserSetting
+from .models import UserSetting, NotificationType, NotificationCategory
 from .serializers import (
     UserSettingSerializer, NicknameUpdateSerializer,
     PasswordChangeSerializer, UserDeactivateSerializer,
     LikedPostsSerializer, ScrappedPostsSerializer, EmailUpdateSerializer,
-    ProfileImageUpdateSerializer
+    ProfileImageUpdateSerializer, NotificationTypeSerializer, NotificationCategorySerializer
 )
 from apps.account.models import UserProfile
 from apps.board.models import PostLike, Post
@@ -32,7 +32,52 @@ class UserSettingDetailView(generics.RetrieveUpdateAPIView):
     def get_object(self):
         setting, _ = UserSetting.objects.get_or_create(user=self.request.user)
         return setting
+    
+    def update(self, request, *args, **kwargs):
+        """
+        알림 설정 변경 시, 유효한 notification_type 및 notification_categories만 허용
+        """
+        data = request.data
+        user_setting = self.get_object()
 
+        # notification_type 검증
+        notification_type_id = data.get("notification_type", {}).get("id")
+        if notification_type_id:
+            try:
+                user_setting.notification_type = NotificationType.objects.get(id=notification_type_id)
+            except NotificationType.DoesNotExist:
+                return Response({"error": "유효하지 않은 notification_type ID입니다."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # notification_categories 검증
+        category_ids = [cat["id"] for cat in data.get("notification_categories", [])]
+        valid_categories = NotificationCategory.objects.filter(id__in=category_ids)
+        if len(valid_categories) != len(category_ids):
+            return Response({"error": "유효하지 않은 notification_categories ID가 포함되어 있습니다."}, status=status.HTTP_400_BAD_REQUEST)
+
+        user_setting.notification_categories.set(valid_categories)
+        user_setting.save()
+
+        return Response(UserSettingSerializer(user_setting).data, status=status.HTTP_200_OK)
+
+class NotificationTypeListView(generics.ListAPIView):
+    """
+    GET: 알림 타입 목록 조회
+    """
+    serializer_class = NotificationTypeSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return NotificationType.objects.all()
+    
+class NotificationCategoryListView(generics.ListAPIView):
+    """
+    GET: 알림 카테고리 목록 조회
+    """
+    serializer_class = NotificationCategorySerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return NotificationCategory.objects.all()
 
 class NicknameUpdateView(views.APIView):
     """
