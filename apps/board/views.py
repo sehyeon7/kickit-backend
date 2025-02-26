@@ -11,7 +11,7 @@ from rest_framework.exceptions import ValidationError, PermissionDenied
 
 from .models import Board, Post, Comment, PostLike, CommentLike
 from .serializers import (
-    BoardSerializer, PostSerializer, CommentSerializer, PostLikeSerializer, PostCreateUpdateSerializer, PostImageSerializer
+    BoardSerializer, PostSerializer, CommentSerializer, PostCreateUpdateSerializer, PostImageSerializer
 )
 
 from apps.notification.utils import send_notification
