@@ -163,30 +163,6 @@ class HidePostView(generics.GenericAPIView):
             post.hidden_by.add(user)
             return Response({"detail": "해당 글 숨김 처리"}, status=status.HTTP_200_OK)
 
-class BlockAuthorFromPostView(generics.GenericAPIView):
-    """
-    게시글 작성자 차단
-    POST /board/<board_id>/posts/<post_id>/block-author/
-    => accounts.views.BlockUserView와 유사 로직
-    """
-    permission_classes = [permissions.IsAuthenticated]
-
-    def post(self, request, board_id, post_id):
-        post = get_object_or_404(Post, id=post_id, board_id=board_id)
-        target_user = post.author
-        if target_user == request.user:
-            return Response({"error": "자기 자신은 차단할 수 없습니다."}, status=status.HTTP_400_BAD_REQUEST)
-
-        profile = request.user.profile
-        if target_user in profile.blocked_users.all():
-            # 이미 차단 중 => 해제
-            profile.blocked_users.remove(target_user)
-            return Response({"detail": f"{target_user.username} 차단 해제"}, status=status.HTTP_200_OK)
-        else:
-            profile.blocked_users.add(target_user)
-            return Response({"detail": f"{target_user.username} 차단 완료"}, status=status.HTTP_200_OK)
-
-
 class CommentListCreateView(generics.ListCreateAPIView):
     """
     Post에 달린 댓글/대댓글 목록 & 작성

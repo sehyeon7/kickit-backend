@@ -3,7 +3,7 @@ from .views import (
     BoardListView,
     PostListView,
     PostListCreateView, PostDetailView,
-    HidePostView, BlockAuthorFromPostView,
+    HidePostView,
     CommentListCreateView, ReplyListCreateView,
     CommentLikeToggleView,
     PostLikeToggleView, ScrapToggleView
@@ -22,7 +22,6 @@ urlpatterns = [
 
     # Hide / Block
     path('<int:board_id>/posts/<int:post_id>/hide/', HidePostView.as_view(), name='post-hide'),
-    path('<int:board_id>/posts/<int:post_id>/block-author/', BlockAuthorFromPostView.as_view(), name='block-author'),
 
     # Comment (일반 댓글 / 대댓글)
     path('<int:board_id>/posts/<int:post_id>/comments/', CommentListCreateView.as_view(), name='comment-list-create'),
