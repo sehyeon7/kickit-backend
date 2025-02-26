@@ -250,16 +250,31 @@ class CommentLikeToggleView(generics.GenericAPIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, board_id, post_id, comment_id):
-        comment = get_object_or_404(Comment, id=comment_id, post_id=post_id)
         user = request.user
+        if not user.is_authenticated:
+            return Response({"error": "로그인이 필요합니다."}, status=status.HTTP_401_UNAUTHORIZED)
+        comment = get_object_or_404(Comment, id=comment_id, post_id=post_id)
+    
         like_obj = comment.likes.filter(user=user).first()
         if like_obj:
             # 이미 좋아요 => 취소
             like_obj.delete()
-            return Response({"detail": "좋아요 취소"}, status=status.HTTP_200_OK)
+            is_liked = False
         else:
             CommentLike.objects.create(comment=comment, user=user)
-            return Response({"detail": "좋아요 추가"}, status=status.HTTP_201_CREATED)
+            is_liked = True
+        
+        # 업데이트된 좋아요 개수
+        like_count = comment.likes.count()
+
+        return Response(
+            {
+                "detail": "좋아요 추가" if is_liked else "좋아요 취소",
+                "like_count": like_count,
+                "is_liked": is_liked
+            },
+            status=status.HTTP_200_OK
+        )
 
 class PostLikeToggleView(generics.GenericAPIView):
     """
@@ -269,15 +284,18 @@ class PostLikeToggleView(generics.GenericAPIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, board_id, post_id):
-        post = get_object_or_404(Post, id=post_id)
         user = request.user
+        if not user.is_authenticated:
+            return Response({"error": "로그인이 필요합니다."}, status=status.HTTP_401_UNAUTHORIZED)
+        post = get_object_or_404(Post, id=post_id)
         like_obj = post.likes.filter(user=user).first()
         if like_obj:
             # 이미 좋아요 => 취소
             like_obj.delete()
-            return Response({"detail": "좋아요 취소"}, status=status.HTTP_200_OK)
+            is_liked = False
         else:
             PostLike.objects.create(post=post, user=user)
+            is_liked = True
             # 알림 로직
             post_author = post.author
             setting = getattr(post_author, 'setting', None)
@@ -285,7 +303,16 @@ class PostLikeToggleView(generics.GenericAPIView):
                 message = f"당신의 글 '{post.title}'가 좋아요를 받았습니다."
                 send_notification(post_author, message, post_id=post.id)
 
-            return Response({"detail": "좋아요 추가"}, status=status.HTTP_201_CREATED)
+        # 업데이트된 좋아요 개수
+        like_count = post.likes.count()
+        return Response(
+            {
+                "detail": "좋아요 추가" if is_liked else "좋아요 취소",
+                "like_count": like_count,
+                "is_liked": is_liked
+            },
+            status=status.HTTP_200_OK
+        )
 
 
 

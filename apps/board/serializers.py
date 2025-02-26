@@ -57,23 +57,6 @@ class CommentSerializer(serializers.ModelSerializer):
         return []
     
 
-class CommentLikeSerializer(serializers.ModelSerializer):
-    comment_id = serializers.IntegerField(write_only=True)
-
-    class Meta:
-        model = CommentLike
-        fields = ['id', 'comment_id', 'created_at']
-        read_only_fields = ['created_at']
-
-    def create(self, validated_data):
-        user = self.context['request'].user
-        comment_id = validated_data['comment_id']
-        obj, created = CommentLike.objects.get_or_create(
-            user=user, comment_id=comment_id
-        )
-        return obj
-
-
 class PostSerializer(serializers.ModelSerializer):
     author = serializers.SerializerMethodField()
     board_name = serializers.ReadOnlyField(source='board.name')
@@ -173,19 +156,3 @@ class PostCreateUpdateSerializer(serializers.ModelSerializer):
             except Exception as e:
                 raise serializers.ValidationError({"images": ["이미지 업로드 중 오류가 발생했습니다."]})
         return post
-
-class PostLikeSerializer(serializers.ModelSerializer):
-    post_id = serializers.IntegerField(write_only=True)
-
-    class Meta:
-        model = PostLike
-        fields = ['id', 'post_id', 'created_at']
-        read_only_fields = ['created_at']
-
-    def create(self, validated_data):
-        user = self.context['request'].user
-        post_id = validated_data['post_id']
-        obj, created = PostLike.objects.get_or_create(
-            user=user, post_id=post_id
-        )
-        return obj
