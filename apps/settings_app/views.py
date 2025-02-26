@@ -8,6 +8,7 @@ from django.contrib.auth import update_session_auth_hash
 from django.shortcuts import get_object_or_404
 from django.contrib.auth import logout
 from .supabase_utils import upload_image_to_supabase
+from django.db import models
 
 
 from .models import UserSetting, NotificationType, NotificationCategory
@@ -18,7 +19,8 @@ from .serializers import (
     ProfileImageUpdateSerializer, NotificationTypeSerializer, NotificationCategorySerializer
 )
 from apps.account.models import UserProfile
-from apps.board.models import PostLike, Post
+from apps.board.models import PostLike, Post, Comment
+from apps.notification.models import Notification
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.exceptions import TokenError
 
@@ -90,9 +92,25 @@ class NicknameUpdateView(views.APIView):
         serializer.is_valid(raise_exception=True)
 
         nickname = serializer.validated_data['nickname']
-        profile = request.user.profile
+        user = request.user
+        profile = user.profile
+
+        old_nickname = profile.nickname
+
         profile.nickname = nickname
         profile.save()
+
+        # 게시글(`Post`)의 작성자 닉네임 업데이트
+        Post.objects.filter(author=user).update(author_nickname=nickname)
+
+        # 댓글(`Comment`)의 작성자 닉네임 업데이트
+        Comment.objects.filter(author=user).update(author_nickname=nickname)
+
+        # 알림(`Notification`)에서 유저가 포함된 메시지 업데이트
+        Notification.objects.filter(message__icontains=old_nickname).update(
+            message=models.F("message").replace(old_nickname, nickname)
+        )
+
 
         return Response({"detail": f"닉네임이 {nickname} 으로 변경되었습니다."}, status=status.HTTP_200_OK)
 

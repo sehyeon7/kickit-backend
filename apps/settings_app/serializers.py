@@ -55,7 +55,32 @@ class NicknameUpdateSerializer(serializers.Serializer):
     """
     닉네임 변경 시 이용
     """
-    nickname = serializers.CharField(required=True, max_length=50)
+    nickname = serializers.CharField(
+        min_length=3,  
+        max_length=20, 
+        allow_blank=False,
+        error_messages={
+            "min_length": "닉네임은 최소 3자 이상이어야 합니다.",
+            "max_length": "닉네임은 최대 20자 이하로 설정해주세요.",
+            "blank": "닉네임은 공백일 수 없습니다."
+        }
+    )
+
+    def validate_nickname(self, value):
+        """
+        닉네임이 이미 존재하는 경우 예외 처리
+        """
+        request = self.context.get("request")  # 현재 요청 객체 가져오기
+        if not request or not request.user:
+            raise serializers.ValidationError("요청 정보가 없습니다.")
+
+        user = request.user
+
+        # 닉네임이 다른 사용자의 닉네임과 중복되는 경우 예외 처리
+        if UserProfile.objects.filter(nickname=value).exclude(user=user).exists():
+            raise serializers.ValidationError("이미 존재하는 닉네임입니다.")
+        
+        return value
 
 class EmailUpdateSerializer(serializers.Serializer):
     """

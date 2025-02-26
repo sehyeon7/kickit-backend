@@ -39,10 +39,10 @@ class CommentSerializer(serializers.ModelSerializer):
         return obj.author.profile.image.url if hasattr(obj.author, 'profile') and obj.author.profile.image else None
     
     def get_user_nickname(self, obj):
-        return obj.author.profile.nickname if hasattr(obj.author, 'profile') else obj.author.username
+        return obj.author_nickname
     
     def get_reply_target_user_nickname(self, obj):
-        return obj.parent.author.profile.nickname if obj.parent and hasattr(obj.parent.author, 'profile') else None
+        return obj.parent.author_nickname if obj.parent else None
     
     def get_like_count(self, obj):
         return obj.likes.count()
@@ -85,7 +85,7 @@ class PostSerializer(serializers.ModelSerializer):
         profile = getattr(obj.author, 'profile', None)
         return {
             "id": obj.author.id,
-            "nickname": profile.nickname if profile else obj.author.username,
+            "nickname": obj.author_nickname,
             "profile_image": profile.profile_image if profile and profile.profile_image else None
         }
     

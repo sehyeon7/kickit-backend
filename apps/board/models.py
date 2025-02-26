@@ -26,6 +26,7 @@ class Post(models.Model):
     """
     board = models.ForeignKey(Board, on_delete=models.CASCADE, related_name='posts')
     author = models.ForeignKey(User, on_delete=models.CASCADE)
+    author_nickname = models.CharField(max_length=50, blank=True)
     content = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
     scrapped_by = models.ManyToManyField(User, related_name='scrapped_posts', blank=True)
@@ -33,6 +34,11 @@ class Post(models.Model):
 
     def __str__(self):
         return self.title
+    
+    def save(self, *args, **kwargs):
+        if not self.author_nickname:  # 새 게시글 작성 시, 닉네임 자동 설정
+            self.author_nickname = self.author.profile.nickname
+        super().save(*args, **kwargs)
 
     @property
     def like_count(self):
@@ -69,12 +75,18 @@ class Comment(models.Model):
     """
     post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name='comments')
     author = models.ForeignKey(User, on_delete=models.CASCADE)
+    author_nickname = models.CharField(max_length=50, blank=True)
     parent = models.ForeignKey('self', null=True, blank=True, on_delete=models.CASCADE, related_name='replies')
     content = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return f"Comment by {self.author.username}"
+
+    def save(self, *args, **kwargs):
+        if not self.author_nickname:  # 새 댓글 작성 시, 닉네임 자동 설정
+            self.author_nickname = self.author.profile.nickname
+        super().save(*args, **kwargs)
 
     @property
     def is_reply(self):
