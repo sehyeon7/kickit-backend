@@ -145,7 +145,7 @@ class PasswordChangeView(views.APIView):
 
     def post(self, request):
         serializer = PasswordChangeSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
+        serializer.is_valid(raise_exception=True) # 비밀번호 강도 검사 실행
 
         old_password = serializer.validated_data['old_password']
         new_password = serializer.validated_data['new_password']
@@ -153,17 +153,27 @@ class PasswordChangeView(views.APIView):
         user = request.user
         if not user.check_password(old_password):
             return Response({"error": "기존 비밀번호가 틀립니다."}, status=status.HTTP_400_BAD_REQUEST)
+        
+        if old_password == new_password:
+            return Response({"error": "새 비밀번호는 기존 비밀번호와 다르게 설정해야 합니다."}, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            user.set_password(new_password)
+            user.save()
 
-        user.set_password(new_password)
-        user.save()
-        # JWT 기반에서는 `access_token`을 새로 발급해야 함.
-        refresh = RefreshToken.for_user(user)
-        response = Response({"detail": "비밀번호가 변경되었습니다."}, status=status.HTTP_200_OK)
-        response.set_cookie('access_token', value=str(refresh.access_token), httponly=True, secure=True, samesite='None')
-        response.set_cookie('refresh_token', value=str(refresh), httponly=True, secure=True, samesite='None')
+            # JWT 기반에서는 기존 토큰을 폐기하고 새로 발급해야 함.
+            refresh = RefreshToken.for_user(user)
+            response = Response({"detail": "비밀번호가 변경되었습니다."}, status=status.HTTP_200_OK)
+            response.set_cookie('access_token', value=str(refresh.access_token), httponly=True, secure=True, samesite='None')
+            response.set_cookie('refresh_token', value=str(refresh), httponly=True, secure=True, samesite='None')
 
-        return Response({"detail": "비밀번호가 변경되었습니다."}, status=status.HTTP_200_OK)
+            return response
 
+        except Exception as e:
+            return Response(
+                {"error": "비밀번호 변경 중 문제가 발생했습니다. 관리자에게 문의하세요."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 class ProfileImageUpdateView(views.APIView):
     """
     PATCH: 프로필 이미지 변경

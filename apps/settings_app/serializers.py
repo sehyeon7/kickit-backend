@@ -4,6 +4,7 @@ from .models import UserSetting
 from apps.account.models import UserProfile
 from apps.settings_app.models import NotificationType, NotificationCategory
 from django.core.validators import validate_email
+from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 
 class NotificationTypeSerializer(serializers.ModelSerializer):
@@ -116,6 +117,17 @@ class PasswordChangeSerializer(serializers.Serializer):
     """
     old_password = serializers.CharField(required=True)
     new_password = serializers.CharField(required=True)
+
+    def validate_new_password(self, value):
+        """
+        새 비밀번호 검증 (강도 검사)
+        """
+        try:
+            validate_password(value)  # Django 내장 비밀번호 유효성 검사 실행
+        except ValidationError as e:
+            raise serializers.ValidationError(e.messages)
+        
+        return value
 
 class UserDeactivateSerializer(serializers.Serializer):
     """
