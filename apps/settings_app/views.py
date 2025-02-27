@@ -121,12 +121,18 @@ class EmailUpdateView(views.APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
-        serializer = EmailUpdateSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
+        serializer = EmailUpdateSerializer(data=request.data, context={"request": request})
+        serializer.is_valid(raise_exception=True) # 이메일 중복 검증 실행
 
         email = serializer.validated_data['email']
-        request.user.email = email
-        request.user.save()
+        try:
+            request.user.email = email
+            request.user.save()
+        except Exception as e:
+            return Response(
+                {"error": "이메일 변경 중 문제가 발생했습니다. 관리자에게 문의하세요."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
         return Response({"detail": f"이메일이 {email} 으로 변경되었습니다."}, status=status.HTTP_200_OK)
 

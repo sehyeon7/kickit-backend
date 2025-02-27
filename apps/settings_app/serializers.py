@@ -3,6 +3,8 @@ from django.contrib.auth.models import User
 from .models import UserSetting
 from apps.account.models import UserProfile
 from apps.settings_app.models import NotificationType, NotificationCategory
+from django.core.validators import validate_email
+from django.core.exceptions import ValidationError
 
 class NotificationTypeSerializer(serializers.ModelSerializer):
     """
@@ -86,7 +88,27 @@ class EmailUpdateSerializer(serializers.Serializer):
     """
     이메일 변경 시 이용
     """
-    email = serializers.CharField(required=True, max_length=50)
+    email = serializers.CharField(
+        required=True,
+        error_messages={
+            "blank": "이메일은 필수 입력 항목입니다.",
+        }
+    )
+
+    def validate_email(self, value):
+        """
+        이메일 형식 및 중복 체크
+        """
+        try:
+            validate_email(value)  # 이메일 형식 검증
+        except ValidationError:
+            raise serializers.ValidationError("유효한 이메일 주소를 입력해주세요.")
+
+        # 이미 존재하는 이메일인지 확인 (자기 자신 제외)
+        if User.objects.filter(email=value).exclude(id=self.context["request"].user.id).exists():
+            raise serializers.ValidationError("이미 사용 중인 이메일입니다.")
+
+        return value
 
 class PasswordChangeSerializer(serializers.Serializer):
     """
