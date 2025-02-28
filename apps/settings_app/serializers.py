@@ -135,15 +135,6 @@ class UserDeactivateSerializer(serializers.Serializer):
     """
     confirm = serializers.BooleanField()
 
-class LikedPostsSerializer(serializers.Serializer):
-    """
-    내가 좋아요한 게시글
-    """
-    post_id = serializers.IntegerField()
-    title = serializers.CharField()
-    board_name = serializers.CharField()
-    created_at = serializers.DateTimeField()
-
 class ScrappedPostsSerializer(serializers.Serializer):
     """
     내가 스크랩한 게시글

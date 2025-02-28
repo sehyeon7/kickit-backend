@@ -15,9 +15,10 @@ from .models import UserSetting, NotificationType, NotificationCategory
 from .serializers import (
     UserSettingSerializer, NicknameUpdateSerializer,
     PasswordChangeSerializer, UserDeactivateSerializer,
-    LikedPostsSerializer, ScrappedPostsSerializer, EmailUpdateSerializer,
+    ScrappedPostsSerializer, EmailUpdateSerializer,
     ProfileImageUpdateSerializer, NotificationTypeSerializer, NotificationCategorySerializer
 )
+from apps.board.serializers import PostSerializer
 from apps.account.models import UserProfile
 from apps.board.models import PostLike, Post, Comment
 from apps.notification.models import Notification
@@ -244,11 +245,10 @@ class LikedPostsView(generics.ListAPIView):
     GET: 내가 좋아요(추천)한 게시글 목록
     """
     permission_classes = [permissions.IsAuthenticated]
-    serializer_class = LikedPostsSerializer
+    serializer_class = PostSerializer
 
     def get_queryset(self):
-        return PostLike.objects.filter(user=self.request.user).select_related('post')
-
+        return Post.objects.filter(likes__user=self.request.user).prefetch_related("images", "likes", "comments")
 
 class ScrappedPostsView(generics.ListAPIView):
     """
