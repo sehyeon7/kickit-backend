@@ -1,17 +1,19 @@
 from django.conf import settings
 from apps.notification.models import Notification
 from apps.settings_app.models import NotificationType
+from django.contrib.auth.models import User
+from apps.settings_app.models import UserSetting
 
-def send_notification(user, message, post_id=None, comment_id=None):
+def send_notification(user, title, message, post_id=None):
     """
     user의 알림 설정(UserSetting)을 확인해, In-app 알림 / Push 알림을 보낸다.
     """
     # 1) In-app 알림 생성
     Notification.objects.create(
         user=user,
+        title=title,
         message=message,
         post_id=post_id,
-        comment_id=comment_id,
     )
     # 2) user.setting.notification_type 확인
     user_setting = getattr(user, 'setting', None)
@@ -22,6 +24,78 @@ def send_notification(user, message, post_id=None, comment_id=None):
     if user_setting.notification_type == NotificationType.PUSH_IN_APP:
         # 실제로는 FCM, APNs, SMS 등 Push 로직 필요
         push_send_demo(user, message)
+
+def handle_comment_notification(comment, post, parent_comment):
+    """
+    - 댓글/대댓글 알림을 처리
+    - 부모 댓글이 있으면 대댓글, 없으면 게시글의 댓글로 간주
+    """
+    comment_author = comment.author
+
+    if parent_comment:
+        parent_comment_author = parent_comment.author
+        user_setting = UserSetting.objects.filter(user=parent_comment_author).first()
+        if user_setting and user_setting.notification_categories.filter(name="Commented").exists():
+            send_notification(
+                user=parent_comment_author,
+                title="새로운 대댓글이 달렸습니다!",
+                message=f"{comment_author.profile.nickname}: {comment.content}",
+                post_id=post.id,
+                comment_id=comment.id
+            )
+    else:
+        post_author = post.author
+        user_setting = UserSetting.objects.filter(user=post_author).first()
+        if user_setting and user_setting.notification_categories.filter(name="Commented").exists():
+            send_notification(
+                user=post_author,
+                title="새로운 댓글이 달렸습니다!",
+                message=f"{comment_author.profile.nickname}: {comment.content}",
+                post_id=post.id,
+                comment_id=comment.id
+            )
+
+def handle_like_notification(user, post_or_comment, is_post=True):
+    """
+    - 글 좋아요: 게시글 작성자에게 알림
+    - 댓글 좋아요: 댓글 작성자에게 알림
+    """
+    target_author = post_or_comment.author
+    user_setting = UserSetting.objects.filter(user=target_author).first()
+    if not user_setting or not user_setting.notification_categories.filter(name="Liked").exists():
+        return
+
+    if is_post:
+        title = "당신의 글이 좋아요를 받았습니다!"
+        message = f"'{post_or_comment.content}'"
+        post_id = post_or_comment.id 
+    else:
+        title = "당신의 댓글이 좋아요를 받았습니다!"
+        message = f"'{post_or_comment.content}'"
+        post_id = post_or_comment.post.id  
+
+    send_notification(target_author, title, message, post_id)
+
+def handle_mention_notification(comment, mention_usernames):
+    """
+    - 멘션된 사용자에게 알림 전송
+    - 존재하지 않는 닉네임은 무시
+    """
+    comment_author = comment.author
+    for nickname in mention_usernames:
+        try:
+            mentioned_user = User.objects.get(profile__nickname=nickname)
+            user_setting = UserSetting.objects.filter(user=mentioned_user).first()
+            if user_setting and user_setting.notification_categories.filter(name="Mentioned").exists():
+                send_notification(
+                    user=mentioned_user,
+                    title=f"'{comment_author.profile.nickname}'님이 당신을 댓글에서 언급했습니다.",
+                    message=f"{comment.content}",
+                    post_id=comment.post.id,
+                    comment_id=comment.id
+                )
+        except User.DoesNotExist:
+            continue  # 존재하지 않는 유저는 무시
 
 def push_send_demo(user, message, post_id=None, comment_id=None):
     """
