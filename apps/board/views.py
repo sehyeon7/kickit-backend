@@ -12,6 +12,7 @@ from apps.notification.utils import handle_comment_notification, handle_like_not
 
 from .models import Board, Post, Comment, PostLike, CommentLike
 from apps.settings_app.models import UserSetting
+from .pagination import PostCursorPagination
 from .serializers import (
     BoardSerializer, PostSerializer, CommentSerializer, PostCreateUpdateSerializer, PostImageSerializer
 )
@@ -36,6 +37,7 @@ class PostListView(generics.ListAPIView):
     """
     serializer_class = PostSerializer
     permission_classes = [permissions.AllowAny]
+    pagination_class = PostCursorPagination
 
     def get_queryset(self):
         user = self.request.user
@@ -65,6 +67,7 @@ class PostListCreateView(generics.ListCreateAPIView):
     """
     queryset = Post.objects.all()
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    pagination_class = PostCursorPagination
 
     def get_serializer_class(self):
         if self.request.method == 'POST':
