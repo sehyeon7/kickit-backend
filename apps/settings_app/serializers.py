@@ -7,6 +7,18 @@ from django.core.validators import validate_email
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 
+def validate_image_extension(image):
+    """
+    허용된 이미지 확장자만 업로드 가능하도록 검증
+    """
+    valid_extensions = ["jpg", "jpeg", "png"]
+    file_ext = image.name.split(".")[-1].lower()
+    
+    if file_ext not in valid_extensions:
+        raise ValidationError("지원되지 않는 파일 형식입니다. (jpg, jpeg, png만 허용)")
+
+    return image
+
 class NotificationTypeSerializer(serializers.ModelSerializer):
     """
     알림 타입 Serializer
@@ -148,4 +160,4 @@ class ProfileImageUpdateSerializer(serializers.Serializer):
     """
     프로필 이미지 변경 Serializer
     """
-    image = serializers.ImageField()
+    image = serializers.ImageField(validators=[validate_image_extension]) 

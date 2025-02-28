@@ -188,16 +188,20 @@ class ProfileImageUpdateView(views.APIView):
 
         user_profile = request.user.profile
 
-        # Supabase에 이미지 업로드
-        uploaded_url = upload_image_to_supabase(serializer.validated_data['image'])
-        if not uploaded_url:
+        try:
+            # Supabase에 이미지 업로드
+            uploaded_url = upload_image_to_supabase(serializer.validated_data['image'])
+            if not uploaded_url:
+                raise Exception("Supabase 업로드 실패")
+
+            # 기존 프로필 이미지 업데이트
+            user_profile.profile_image = uploaded_url
+            user_profile.save()
+
+            return Response({"profile_image": uploaded_url}, status=status.HTTP_200_OK)
+        
+        except Exception as e:
             return Response({"error": "이미지 업로드에 실패했습니다."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-        # 기존 프로필 이미지 업데이트
-        user_profile.profile_image = uploaded_url
-        user_profile.save()
-
-        return Response({"profile_image": uploaded_url}, status=status.HTTP_200_OK)
 
 
 class UserDeactivateView(views.APIView):
