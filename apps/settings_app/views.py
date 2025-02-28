@@ -206,30 +206,37 @@ class UserDeactivateView(views.APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
-        serializer = UserDeactivateSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
+        user = request.user
 
-        confirm = serializer.validated_data['confirm']
-        if confirm:
-            user = request.user
-            user.is_active = False
-            user.save()
+        # 유저 비활성화 (DB에는 유지)
+        user.is_active = False
+        user.save()
 
-            # JWT 토큰 블랙리스트 처리 (로그아웃 시와 동일)
-            try:
-                refresh_token = request.COOKIES.get("refresh_token")
-                if refresh_token:
-                    token = RefreshToken(refresh_token)
-                    token.blacklist()
-            except TokenError:
-                pass
+        # 닉네임을 "탈퇴한 사용자"로 변경
+        profile = getattr(user, 'profile', None)
+        if profile:
+            profile.nickname = "탈퇴한 사용자"
+            profile.save()
 
-            response = Response({"detail": "회원탈퇴되었습니다."}, status=status.HTTP_200_OK)
-            response.delete_cookie("access_token")
-            response.delete_cookie("refresh_token")
-            return response
+        # 게시글 & 댓글에서 닉네임을 "탈퇴한 사용자"로 변경
+        Post.objects.filter(author=user).update(author_nickname="탈퇴한 사용자")
+        Comment.objects.filter(author=user).update(author_nickname="탈퇴한 사용자")
 
-        return Response({"error": "탈퇴가 취소되었습니다."}, status=status.HTTP_400_BAD_REQUEST)
+        # JWT 토큰 블랙리스트 처리 (로그아웃)
+        try:
+            refresh_token = request.COOKIES.get("refresh_token")
+            if refresh_token:
+                token = RefreshToken(refresh_token)
+                token.blacklist()
+        except TokenError:
+            pass
+
+        # 클라이언트 쿠키 삭제 (로그아웃 처리)
+        response = Response({"detail": "회원탈퇴되었습니다."}, status=status.HTTP_200_OK)
+        response.delete_cookie("access_token")
+        response.delete_cookie("refresh_token")
+        
+        return response
 
 
 class LikedPostsView(generics.ListAPIView):
