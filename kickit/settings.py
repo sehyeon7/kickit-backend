@@ -209,3 +209,8 @@ SIMPLE_JWT = {  'ACCESS_TOKEN_LIFETIME': timedelta(minutes=30),
                 'AUTH_COOKIE_PATH': '/',
                 'AUTH_COOKIE_SAMESITE': 'None',
             }
+
+AUTHENTICATION_BACKENDS = [
+    'django.contrib.auth.backends.ModelBackend',  # 기본 username 기반 인증
+    'apps.account.auth_backends.EmailAuthBackend',  # 추가한 이메일 기반 인증
+]
