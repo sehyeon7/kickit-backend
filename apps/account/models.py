@@ -36,7 +36,7 @@ class UserProfile(models.Model):
 
     profile_image = models.URLField(
         max_length=500, blank=True, null=True, 
-        default="https://your-supabase-url.com/default_profile.png" #수정 필요
+        default="https://mjkitubvbpjnzihaaxjo.supabase.co//storage/v1/object/public/kickit_bucket/profile_images/default_profile.png"
     )
 
     # 내가 차단한 유저 목록(M2M)
