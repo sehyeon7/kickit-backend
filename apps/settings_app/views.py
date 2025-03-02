@@ -9,6 +9,7 @@ from django.shortcuts import get_object_or_404
 from django.contrib.auth import logout
 from .supabase_utils import upload_image_to_supabase
 from django.db import models
+from apps.board.pagination import PostCursorPagination
 
 
 from .models import UserSetting, NotificationType, NotificationCategory
@@ -250,6 +251,7 @@ class LikedPostsView(generics.ListAPIView):
     """
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = PostSerializer
+    pagination_class = PostCursorPagination
 
     def get_queryset(self):
         return Post.objects.filter(likes__user=self.request.user).prefetch_related("images", "likes", "comments")
