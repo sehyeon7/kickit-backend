@@ -3,6 +3,31 @@ from apps.notification.models import Notification
 from apps.settings_app.models import NotificationType
 from django.contrib.auth.models import User
 from apps.settings_app.models import UserSetting
+import requests
+from fcm_django.models import FCMDevice
+from firebase_admin.messaging import Message, Notification, send
+from google.auth.transport.requests import Request
+from google.oauth2 import service_account
+import requests
+import json
+from django.conf import settings
+
+FIREBASE_SCOPES = ["https://www.googleapis.com/auth/firebase.messaging"]
+FIREBASE_CREDENTIALS_PATH = settings.FIREBASE_CREDENTIALS_PATH
+
+FCM_API_URL = f"https://fcm.googleapis.com/v1/projects/{settings.FIREBASE_PROJECT_ID}/messages:send"
+
+def get_fcm_access_token():
+    """
+    Firebase Cloud Messaging HTTP v1 API를 사용하기 위한 OAuth 2.0 액세스 토큰 발급
+    """
+    credentials = service_account.Credentials.from_service_account_file(
+        FIREBASE_CREDENTIALS_PATH, 
+        scopes=FIREBASE_SCOPES
+    )
+
+    credentials.refresh(Request())  # 토큰 갱신
+    return credentials.token
 
 def send_notification(user, title, message, post_id=None):
     """
@@ -16,14 +41,14 @@ def send_notification(user, title, message, post_id=None):
         post_id=post_id,
     )
     # 2) user.setting.notification_type 확인
-    user_setting = getattr(user, 'setting', None)
-    if not user_setting:
+    user_setting = UserSetting.objects.filter(user=user).first()
+    if not user_setting or user_setting.notification_type == NotificationType.IN_APP:
         # 설정이 없는 경우 -> In-app만
         return
 
     if user_setting.notification_type == NotificationType.PUSH_IN_APP:
         # 실제로는 FCM, APNs, SMS 등 Push 로직 필요
-        push_send_demo(user, message)
+        send_fcm_push_notification(user, message)
 
 def handle_comment_notification(comment, post, parent_comment):
     """
@@ -97,12 +122,51 @@ def handle_mention_notification(comment, mention_usernames):
         except User.DoesNotExist:
             continue  # 존재하지 않는 유저는 무시
 
-def push_send_demo(user, message, post_id=None, comment_id=None):
+def send_fcm_push_notification(user, title, message, post_id=None):
     """
-    실제 프로젝트에서는 FCM 토큰 / APNs 토큰 등을 보관해야 하고,
-    그 토큰으로 외부 Push 서버에 요청을 보내야 한다.
-    여기서는 예시로 print()로 대신함.
+    특정 유저에게 FCM Push 알림을 전송하는 함수
     """
-    # 예시: print()로 표시
-    # 푸시 로직(FCM/APNs/WebPush 등) - 여기서는 데모
-    print(f"[푸시 알림] {user.username} => {message} (post_id={post_id}, comment_id={comment_id})")
+    device = FCMDevice.objects.filter(user=user).first()
+    if not device:
+        print(f"{user.username}의 FCM 기기가 등록되지 않음")
+        return
+    
+    token = get_fcm_access_token()
+
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json"
+    }
+
+    payload = {
+        "message": {
+            "token": device.registration_id,
+            "notification": {
+                "title": title,
+                "body": message
+            },
+            "data": {
+                "post_id": str(post_id) if post_id else "",
+                "click_action": "FLUTTER_NOTIFICATION_CLICK"
+            },
+            "android": {
+                "notification": {
+                    "click_action": "FLUTTER_NOTIFICATION_CLICK"
+                }
+            },
+            "apns": {
+                "payload": {
+                    "aps": {
+                        "category": "NEW_MESSAGE_CATEGORY"
+                    }
+                }
+            }
+        }
+    }
+    
+    response = requests.post(FCM_API_URL, headers=headers, data=json.dumps(payload))
+
+    if response.status_code == 200:
+        print(f"{user.username}에게 푸시 알림 전송 성공")
+    else:
+        print(f"{user.username}에게 푸시 알림 전송 실패: {response.text}")

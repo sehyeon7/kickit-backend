@@ -13,6 +13,7 @@ from django.utils.encoding import force_str
 from django.utils.http import urlsafe_base64_decode
 import random
 import string
+from fcm_django.models import FCMDevice
 
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
@@ -367,3 +368,26 @@ class PasswordResetRequestView(APIView):
             return Response({"error": "이메일을 전송하는 중 오류가 발생했습니다. 다시 시도해주세요."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         return Response({"detail": "임시 비밀번호가 이메일로 발송되었습니다."}, status=status.HTTP_200_OK)
+
+class RegisterFCMTokenView(APIView):
+    """
+    앱에서 발급받은 FCM 토큰을 등록하는 API
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        user = request.user
+        user_profile = request.user.profile
+        fcm_token = request.data.get("fcm_token")
+        device_type = request.data.get("device_type", "").lower()
+
+        if not fcm_token or not isinstance(fcm_token, str) or len(fcm_token.strip()) == 0:
+            return Response({"error": "유효한 FCM 토큰이 필요합니다."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # 기존 토큰이 있는 경우 업데이트
+        device, created = FCMDevice.objects.update_or_create(
+            user=user,
+            defaults={"registration_id": fcm_token, "type": device_type}
+        )
+
+        return Response({"detail": "FCM 토큰이 등록되었습니다."}, status=status.HTTP_200_OK)

@@ -1,5 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import User
+from fcm_django.models import FCMDevice
 
 # Create your models here.
 class School(models.Model):
@@ -40,6 +41,7 @@ class UserProfile(models.Model):
 
     # 내가 차단한 유저 목록(M2M)
     blocked_users = models.ManyToManyField(User, related_name='blocked_by', blank=True)
+    fcm_token = models.CharField(max_length=255, blank=True, null=True)
 
     def __str__(self):
         return f"{self.user.username}'s Profile"

@@ -4,7 +4,7 @@ from .views import (
     BlockUserView,
     NicknameCheckView, ProfileUpdateView,
     SchoolListView, DepartmentListView,
-    PasswordResetRequestView, TokenRefreshView
+    PasswordResetRequestView, TokenRefreshView, RegisterFCMTokenView
 )
 
 urlpatterns = [
@@ -38,4 +38,6 @@ urlpatterns = [
 
     # 비밀번호 찾기
     path('password-reset/request/', PasswordResetRequestView.as_view(), name='password-reset-request'),
+
+    path("register-fcm-token/", RegisterFCMTokenView.as_view(), name="register-fcm-token"),
 ]

@@ -25,6 +25,15 @@ environ.Env.read_env(
     env_file=os.path.join(BASE_DIR, '.env')
 )
 
+import firebase_admin
+from firebase_admin import credentials
+
+FIREBASE_CREDENTIALS_PATH = os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "kickit/snulife-international-firebase-adminsdk-fbsvc-44bb43dfba.json")
+cred = credentials.Certificate(FIREBASE_CREDENTIALS_PATH)
+FIREBASE_PROJECT_ID = os.getenv("FIREBASE_PROJECT_ID")
+firebase_admin.initialize_app(cred)
+
+
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
@@ -35,6 +44,7 @@ SUPABASE_URL = env('SUPABASE_URL')
 SUPABASE_ANON_PUBLIC_KEY = env('SUPABASE_ANON_PUBLIC_KEY')
 SUPABASE_SERVICE_ROLE_KEY = env('SUPABASE_SERVICE_ROLE_KEY')
 SUPABASE_BUCKET = env('SUPABASE_BUCKET')
+
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
@@ -61,6 +71,7 @@ INSTALLED_APPS = [
     'apps.notification',
     'apps.board',
     'apps.settings_app',
+    'fcm_django',
 ]
 
 MIDDLEWARE = [
@@ -182,8 +193,6 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': ( 
         'rest_framework_simplejwt.authentication.JWTAuthentication', 
     ),
-    'DEFAULT_PAGINATION_CLASS': 'board.pagination.PostCursorPagination',
-    'PAGE_SIZE': 10
 }
 
 # CORS
