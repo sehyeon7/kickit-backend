@@ -1,1 +1,1 @@
-web: gunicorn kickit.wsgi --bind 0.0.0.0:80
+web: gunicorn kickit.wsgi --bind 0.0.0.0:$PORT
