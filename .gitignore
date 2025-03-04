@@ -21,3 +21,6 @@ prod-ca-2021.crt
 .elasticbeanstalk/*
 !.elasticbeanstalk/*.cfg.yml
 !.elasticbeanstalk/*.global.yml
+
+# Firebase credentials
+snulife-international-firebase-adminsdk-fbsvc-44bb43dfba.json
