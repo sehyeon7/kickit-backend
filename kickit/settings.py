@@ -16,6 +16,33 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 import os, environ
+import json
+import boto3
+from firebase_admin import credentials, initialize_app
+from botocore.exceptions import ClientError
+
+SECRET_NAME = os.environ.get('FIREBASE_SECRET_NAME') 
+REGION_NAME = "ap-northeast-2" 
+
+def get_firebase_creds():
+    session = boto3.session.Session()
+    client = session.client(service_name='secretsmanager', region_name=REGION_NAME)
+    try:
+        resp = client.get_secret_value(SecretId=SECRET_NAME)
+        secret_string = resp['SecretString']
+        return json.loads(secret_string)
+    except ClientError as e:
+        # 로깅 혹은 예외처리
+        raise e
+
+# Firebase 자격 증명 가져오기
+try:
+    firebase_cred_dict = get_firebase_creds()
+    cred = credentials.Certificate(firebase_cred_dict)  # dict 형태로 Certificate 생성
+    initialize_app(cred)
+except Exception as e:
+    print("Failed to initialize Firebase Admin:", e)
+
 
 env = environ.Env(
     DEBUG=(bool, True)
