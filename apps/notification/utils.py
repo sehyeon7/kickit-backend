@@ -10,6 +10,9 @@ from google.auth.transport.requests import Request
 from google.oauth2 import service_account
 import requests
 import json
+import os
+import boto3
+from botocore.exceptions import ClientError
 from django.conf import settings
 
 FIREBASE_SCOPES = ["https://www.googleapis.com/auth/firebase.messaging"]
@@ -17,12 +20,35 @@ FIREBASE_CREDENTIALS_PATH = settings.FIREBASE_CREDENTIALS_PATH
 
 FCM_API_URL = f"https://fcm.googleapis.com/v1/projects/{settings.FIREBASE_PROJECT_ID}/messages:send"
 
+def get_firebase_credentials_json():
+    """
+    AWS Secrets Manager에서 Firebase 자격 증명(Plaintext JSON)을 불러와 문자열로 반환
+    """
+    secret_name = os.getenv("FIREBASE_SECRET_NAME")
+    region_name = "ap-northeast-2"
+
+    session = boto3.session.Session()
+    client = session.client(service_name='secretsmanager', region_name=region_name)
+    try:
+        get_secret_value_response = client.get_secret_value(SecretId=secret_name)
+    except ClientError as e:
+        # 로그/예외처리
+        raise e
+
+    # Plaintext JSON이 SecretString에 들어있다고 가정
+    return get_secret_value_response['SecretString']
+
 def get_fcm_access_token():
     """
     Firebase Cloud Messaging HTTP v1 API를 사용하기 위한 OAuth 2.0 액세스 토큰 발급
+    (Secrets Manager 등에서 JSON을 로드한 뒤 in-memory로 자격증명을 생성)
     """
+    # 1) Secrets Manager(또는 다른 안전한 방법)로부터 credentials JSON 불러오기
+    cred_json_str = get_firebase_credentials_json()  # 아래 예시 함수로부터 가져온 문자열
+    cred_json_dict = json.loads(cred_json_str)
+
     credentials = service_account.Credentials.from_service_account_file(
-        FIREBASE_CREDENTIALS_PATH, 
+        cred_json_dict,
         scopes=FIREBASE_SCOPES
     )
 

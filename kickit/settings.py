@@ -55,10 +55,10 @@ environ.Env.read_env(
 import firebase_admin
 from firebase_admin import credentials
 
-FIREBASE_CREDENTIALS_PATH = os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "kickit/snulife-international-firebase-adminsdk-fbsvc-44bb43dfba.json")
-cred = credentials.Certificate(FIREBASE_CREDENTIALS_PATH)
+# FIREBASE_CREDENTIALS_PATH = os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "kickit/snulife-international-firebase-adminsdk-fbsvc-44bb43dfba.json")
+# cred = credentials.Certificate(FIREBASE_CREDENTIALS_PATH)
 FIREBASE_PROJECT_ID = os.getenv("FIREBASE_PROJECT_ID")
-firebase_admin.initialize_app(cred)
+# firebase_admin.initialize_app(cred)
 
 
 
