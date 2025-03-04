@@ -67,3 +67,4 @@ wcwidth==0.2.13
 websockets==14.2
 whitenoise==6.9.0
 yarl==1.18.3
+firebase-admin
