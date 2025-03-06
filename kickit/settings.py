@@ -37,6 +37,16 @@ from firebase_admin import credentials
 FIREBASE_PROJECT_ID = os.getenv("FIREBASE_PROJECT_ID")
 # firebase_admin.initialize_app(cred)
 
+# Quick-start development settings - unsuitable for production
+# See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
+
+# SECURITY WARNING: keep the secret key used in production secret!
+SECRET_KEY = env('SECRET_KEY')
+SUPABASE_URL = env('SUPABASE_URL')
+SUPABASE_ANON_PUBLIC_KEY = env('SUPABASE_ANON_PUBLIC_KEY')
+SUPABASE_SERVICE_ROLE_KEY = env('SUPABASE_SERVICE_ROLE_KEY')
+SUPABASE_BUCKET = env('SUPABASE_BUCKET')
+
 SECRET_NAME = os.environ.get('FIREBASE_SECRET_NAME') 
 REGION_NAME = "ap-northeast-2" 
 
@@ -58,18 +68,6 @@ try:
     initialize_app(cred)
 except Exception as e:
     print("Failed to initialize Firebase Admin:", e)
-
-
-
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
-
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = env('SECRET_KEY')
-SUPABASE_URL = env('SUPABASE_URL')
-SUPABASE_ANON_PUBLIC_KEY = env('SUPABASE_ANON_PUBLIC_KEY')
-SUPABASE_SERVICE_ROLE_KEY = env('SUPABASE_SERVICE_ROLE_KEY')
-SUPABASE_BUCKET = env('SUPABASE_BUCKET')
 
 
 # SECURITY WARNING: don't run with debug turned on in production!
