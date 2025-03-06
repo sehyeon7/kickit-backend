@@ -21,6 +21,22 @@ import boto3
 from firebase_admin import credentials, initialize_app
 from botocore.exceptions import ClientError
 
+env = environ.Env(
+    DEBUG=(bool, True)
+)
+
+environ.Env.read_env(
+    env_file=os.path.join(BASE_DIR, '.env')
+)
+
+import firebase_admin
+from firebase_admin import credentials
+
+# FIREBASE_CREDENTIALS_PATH = os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "kickit/snulife-international-firebase-adminsdk-fbsvc-44bb43dfba.json")
+# cred = credentials.Certificate(FIREBASE_CREDENTIALS_PATH)
+FIREBASE_PROJECT_ID = os.getenv("FIREBASE_PROJECT_ID")
+# firebase_admin.initialize_app(cred)
+
 SECRET_NAME = os.environ.get('FIREBASE_SECRET_NAME') 
 REGION_NAME = "ap-northeast-2" 
 
@@ -42,23 +58,6 @@ try:
     initialize_app(cred)
 except Exception as e:
     print("Failed to initialize Firebase Admin:", e)
-
-
-env = environ.Env(
-    DEBUG=(bool, True)
-)
-
-environ.Env.read_env(
-    env_file=os.path.join(BASE_DIR, '.env')
-)
-
-import firebase_admin
-from firebase_admin import credentials
-
-# FIREBASE_CREDENTIALS_PATH = os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "kickit/snulife-international-firebase-adminsdk-fbsvc-44bb43dfba.json")
-# cred = credentials.Certificate(FIREBASE_CREDENTIALS_PATH)
-FIREBASE_PROJECT_ID = os.getenv("FIREBASE_PROJECT_ID")
-# firebase_admin.initialize_app(cred)
 
 
 
