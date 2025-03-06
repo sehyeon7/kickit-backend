@@ -42,10 +42,10 @@ FIREBASE_PROJECT_ID = os.getenv("FIREBASE_PROJECT_ID")
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.environ.get('SECRET_KEY')
-SECRET_KEY = os.environ.get('SUPABASE_URL')
-SECRET_KEY = os.environ.get('SUPABASE_ANON_PUBLIC_KEY')
-SECRET_KEY = os.environ.get('SUPABASE_SERVICE_ROLE_KEY')
-SECRET_KEY = os.environ.get('SUPABASE_BUCKET')
+SUPABASE_URL = os.environ.get('SUPABASE_URL')
+SUPABASE_ANON_PUBLIC_KEY = os.environ.get('SUPABASE_ANON_PUBLIC_KEY')
+SUPABASE_SERVICE_ROLE_KEY = os.environ.get('SUPABASE_SERVICE_ROLE_KEY')
+SUPABASE_BUCKET = os.environ.get('SUPABASE_BUCKET')
 # SUPABASE_URL = env('SUPABASE_URL')
 # SUPABASE_ANON_PUBLIC_KEY = env('SUPABASE_ANON_PUBLIC_KEY')
 # SUPABASE_SERVICE_ROLE_KEY = env('SUPABASE_SERVICE_ROLE_KEY')
@@ -140,12 +140,19 @@ WSGI_APPLICATION = 'kickit.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
-pw = env('SUPABASE_PASSWORD')
-host = env('SUPABASE_HOST')
-user =  env('SUPABASE_USER')
-name = env('SUPABASE_NAME')
-host = env('SUPABASE_HOST')
-port = env('SUPABASE_PORT')
+pw = os.environ.get('SUPABASE_PASSWORD')
+host = os.environ.get('SUPABASE_HOST')
+user =  os.environ.get('SUPABASE_USER')
+name = os.environ.get('SUPABASE_NAME')
+host = os.environ.get('SUPABASE_HOST')
+port = os.environ.get('SUPABASE_PORT')
+
+# pw = env('SUPABASE_PASSWORD')
+# host = env('SUPABASE_HOST')
+# user =  env('SUPABASE_USER')
+# name = env('SUPABASE_NAME')
+# host = env('SUPABASE_HOST')
+# port = env('SUPABASE_PORT')
 
 # DATABASES = {
 #     'default': {
