@@ -25,9 +25,9 @@ env = environ.Env(
     DEBUG=(bool, True)
 )
 
-# environ.Env.read_env(
-#     env_file=os.path.join(BASE_DIR, '.env')
-# )
+environ.Env.read_env(
+    env_file=os.path.join(BASE_DIR, '.env')
+)
 
 import firebase_admin
 from firebase_admin import credentials
@@ -41,7 +41,7 @@ FIREBASE_PROJECT_ID = os.getenv("FIREBASE_PROJECT_ID")
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.environ.get('SECRET_KEY')
+SECRET_KEY = env('SECRET_KEY')
 SUPABASE_URL = os.environ.get('SUPABASE_URL')
 SUPABASE_ANON_PUBLIC_KEY = os.environ.get('SUPABASE_ANON_PUBLIC_KEY')
 SUPABASE_SERVICE_ROLE_KEY = os.environ.get('SUPABASE_SERVICE_ROLE_KEY')
