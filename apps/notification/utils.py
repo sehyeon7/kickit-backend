@@ -16,7 +16,6 @@ from botocore.exceptions import ClientError
 from django.conf import settings
 
 FIREBASE_SCOPES = ["https://www.googleapis.com/auth/firebase.messaging"]
-FIREBASE_CREDENTIALS_PATH = settings.FIREBASE_CREDENTIALS_PATH
 
 FCM_API_URL = f"https://fcm.googleapis.com/v1/projects/{settings.FIREBASE_PROJECT_ID}/messages:send"
 
