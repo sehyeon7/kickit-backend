@@ -25,9 +25,9 @@ env = environ.Env(
     DEBUG=(bool, True)
 )
 
-environ.Env.read_env(
-    env_file=os.path.join(BASE_DIR, '.env')
-)
+# environ.Env.read_env(
+#     env_file=os.path.join(BASE_DIR, '.env')
+# )
 
 import firebase_admin
 from firebase_admin import credentials
