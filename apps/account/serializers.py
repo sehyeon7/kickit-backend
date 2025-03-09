@@ -113,28 +113,30 @@ class PasswordResetRequestSerializer(serializers.Serializer):
             raise serializers.ValidationError("해당 이메일의 계정이 존재하지 않습니다.")
         return value
 
+class PasswordResetRequestSerializer(serializers.Serializer):
+    """
+    비밀번호 재설정 요청 Serializer (이메일 입력)
+    """
+    email = serializers.EmailField()
+
+    def validate_email(self, value):
+        if not User.objects.filter(email=value).exists():
+            raise serializers.ValidationError("해당 이메일의 계정이 존재하지 않습니다.")
+        return value
+
 class PasswordResetSerializer(serializers.Serializer):
     """
-    비밀번호 재설정 Serializer (새 비밀번호 입력)
+    비밀번호 재설정 Serializer (토큰 + 새 비밀번호 입력)
     """
     uidb64 = serializers.CharField()
     token = serializers.CharField()
     new_password = serializers.CharField(write_only=True)
 
-    def validate(self, data):
-        uidb64 = data.get('uidb64')
-        token = data.get('token')
-        new_password = data.get('new_password')
-
-        try:
-            uid = force_str(urlsafe_base64_decode(uidb64))
-            user = User.objects.get(pk=uid)
-        except (User.DoesNotExist, ValueError, TypeError):
-            raise serializers.ValidationError("잘못된 사용자 요청입니다.")
-
-        if not PasswordResetTokenGenerator().check_token(user, token):
-            raise serializers.ValidationError("유효하지 않은 토큰입니다.")
-
-        user.set_password(new_password)
-        user.save()
-        return data
+    def validate_new_password(self, value):
+        if len(value) < 8:
+            raise serializers.ValidationError("비밀번호는 최소 8자 이상이어야 합니다.")
+        if not any(char.isdigit() for char in value):
+            raise serializers.ValidationError("비밀번호에는 숫자가 포함되어야 합니다.")
+        if not any(char.isalpha() for char in value):
+            raise serializers.ValidationError("비밀번호에는 영문자가 포함되어야 합니다.")
+        return value

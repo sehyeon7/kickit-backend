@@ -5,7 +5,7 @@ from .views import (
     NicknameCheckView, ProfileUpdateView,
     SchoolListView, DepartmentListView,
     PasswordResetRequestView, TokenRefreshView, RegisterFCMTokenView,
-    VerificationImageUploadView, VerificationStatusView
+    VerificationImageUploadView, VerificationStatusView, PasswordResetView
 )
 
 urlpatterns = [
@@ -37,8 +37,11 @@ urlpatterns = [
     # 유저 차단
     path('block/<int:user_id>/', BlockUserView.as_view(), name='block-user'),
 
-    # 비밀번호 찾기
+    # 비밀번호 재설정 링크 요청
     path('password-reset/request/', PasswordResetRequestView.as_view(), name='password-reset-request'),
+
+    # 비밀번호 최종 변경 (앱에서)
+    path("password-reset/", PasswordResetView.as_view(), name="password-reset"),
 
     path("register-fcm-token/", RegisterFCMTokenView.as_view(), name="register-fcm-token"),
 

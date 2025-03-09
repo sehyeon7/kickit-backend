@@ -28,7 +28,7 @@ from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken
 from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework.parsers import MultiPartParser
 
-
+FRONTEND_HOST = os.getenv('FRONTEND_HOST')
 
 from .models import UserProfile, School, Department
 from .serializers import (
@@ -396,31 +396,28 @@ class PasswordResetRequestView(APIView):
     """
     permission_classes = [permissions.AllowAny]
 
-    def generate_temp_password(self, length=10):
-        """ 랜덤한 임시 비밀번호 생성 """
-        characters = string.ascii_letters + string.digits
-        return ''.join(random.choices(characters, k=length))
-
     def post(self, request):
         serializer = PasswordResetRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        email = serializer.validated_data['email']
+        email = serializer.validated_data["email"]
 
         try:
             user = User.objects.get(email=email)
         except User.DoesNotExist:
             return Response({"error": "해당 이메일의 계정이 존재하지 않습니다."}, status=status.HTTP_400_BAD_REQUEST)
-        
-        # 랜덤한 임시 비밀번호 생성 및 설정
-        temp_password = self.generate_temp_password()
-        user.set_password(temp_password)
-        user.save()
+
+        # Django 기본 비밀번호 재설정 토큰 생성
+        token = PasswordResetTokenGenerator().make_token(user)
+        uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
+
+        # 비밀번호 재설정 URL 생성 (앱에서 처리 가능하도록 딥링크 포함)
+        reset_link = f"{FRONTEND_HOST}/reset-password/{uidb64}/{token}/"
 
         try:
-            # 이메일로 임시 비밀번호 전송
+            # 이메일로 비밀번호 재설정 링크 전송
             send_mail(
-                subject="비밀번호 재설정 안내",
-                message=f"임시 비밀번호: {temp_password}\n로그인 후 비밀번호를 변경해주세요.",
+                subject="비밀번호 재설정 요청",
+                message=f"비밀번호를 재설정하려면 아래 링크를 클릭하세요:\n{reset_link}",
                 from_email="no-reply@example.com",
                 recipient_list=[email],
                 fail_silently=False,
@@ -428,7 +425,37 @@ class PasswordResetRequestView(APIView):
         except Exception:
             return Response({"error": "이메일을 전송하는 중 오류가 발생했습니다. 다시 시도해주세요."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-        return Response({"detail": "임시 비밀번호가 이메일로 발송되었습니다."}, status=status.HTTP_200_OK)
+        return Response({"detail": "비밀번호 재설정 링크가 이메일로 발송되었습니다."}, status=status.HTTP_200_OK)
+    
+class PasswordResetView(APIView):
+    """
+    이메일에서 리셋 링크 클릭 후, 앱에서 비밀번호를 최종 변경
+    """
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        serializer = PasswordResetSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        uidb64 = serializer.validated_data["uidb64"]
+        token = serializer.validated_data["token"]
+        new_password = serializer.validated_data["new_password"]
+
+        try:
+            uid = force_str(urlsafe_base64_decode(uidb64))
+            user = User.objects.get(pk=uid)
+        except (User.DoesNotExist, ValueError, TypeError):
+            raise ValidationError({"error": "잘못된 사용자 요청입니다."})
+
+        # 토큰 검증
+        if not PasswordResetTokenGenerator().check_token(user, token):
+            raise ValidationError({"error": "유효하지 않은 리셋 토큰입니다. 다시 시도해주세요."})
+
+        # 비밀번호 변경
+        user.set_password(new_password)
+        user.save()
+
+        return Response({"detail": "비밀번호가 성공적으로 변경되었습니다."}, status=status.HTTP_200_OK)
 
 class RegisterFCMTokenView(APIView):
     """
