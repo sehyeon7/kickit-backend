@@ -54,24 +54,43 @@ SUPABASE_BUCKET = os.environ.get('SUPABASE_BUCKET')
 SECRET_NAME = os.environ.get('FIREBASE_SECRET_NAME') 
 REGION_NAME = "ap-northeast-2" 
 
-def get_firebase_creds():
-    session = boto3.session.Session()
-    client = session.client(service_name='secretsmanager', region_name=REGION_NAME)
+import base64
+# Base64 인코딩된 Firebase 자격 증명 문자열을 환경 변수에서 읽어오기
+firebase_creds_b64 = os.getenv("FIREBASE_CREDENTIALS_B64")
+
+if firebase_creds_b64:
     try:
-        resp = client.get_secret_value(SecretId=SECRET_NAME)
-        secret_string = resp['SecretString']
-        return json.loads(secret_string)
-    except ClientError as e:
-        # 로깅 혹은 예외처리
-        raise e
+        # Base64 디코딩하여 JSON 문자열로 변환
+        json_str = base64.b64decode(firebase_creds_b64).decode('utf-8')
+        # JSON 문자열을 dict로 파싱
+        firebase_creds_dict = json.loads(json_str)
+        # Firebase 인증서 초기화
+        cred = credentials.Certificate(firebase_creds_dict)
+        firebase_admin.initialize_app(cred)
+        print("Firebase Admin 초기화 성공")
+    except Exception as e:
+        print("Base64 자격 증명으로 Firebase Admin 초기화 실패:", e)
+else:
+    print("환경 변수 FIREBASE_CREDENTIALS_B64에 Firebase 자격 증명이 설정되어 있지 않습니다.")
+
+# def get_firebase_creds():
+#     session = boto3.session.Session()
+#     client = session.client(service_name='secretsmanager', region_name=REGION_NAME)
+#     try:
+#         resp = client.get_secret_value(SecretId=SECRET_NAME)
+#         secret_string = resp['SecretString']
+#         return json.loads(secret_string)
+#     except ClientError as e:
+#         # 로깅 혹은 예외처리
+#         raise e
 
 # Firebase 자격 증명 가져오기
-try:
-    firebase_cred_dict = get_firebase_creds()
-    cred = credentials.Certificate(firebase_cred_dict)  # dict 형태로 Certificate 생성
-    initialize_app(cred)
-except Exception as e:
-    print("Failed to initialize Firebase Admin:", e)
+# try:
+#     firebase_cred_dict = get_firebase_creds()
+#     cred = credentials.Certificate(firebase_cred_dict)  # dict 형태로 Certificate 생성
+#     initialize_app(cred)
+# except Exception as e:
+#     print("Failed to initialize Firebase Admin:", e)
 
 
 # SECURITY WARNING: don't run with debug turned on in production!
@@ -100,6 +119,7 @@ INSTALLED_APPS = [
     'apps.board',
     'apps.settings_app',
     'fcm_django',
+    'apps.firebase',
 ]
 
 MIDDLEWARE = [
