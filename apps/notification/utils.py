@@ -12,6 +12,7 @@ import requests
 import json
 import os
 import boto3
+import base64
 from botocore.exceptions import ClientError
 from django.conf import settings
 
@@ -21,21 +22,21 @@ FCM_API_URL = f"https://fcm.googleapis.com/v1/projects/{settings.FIREBASE_PROJEC
 
 def get_firebase_credentials_json():
     """
-    AWS Secrets Manager에서 Firebase 자격 증명(Plaintext JSON)을 불러와 문자열로 반환
+    FIREBASE_CREDENTIALS_B64 환경 변수에 Base64 인코딩된 Firebase 자격 증명 JSON이
+    저장되어 있다고 가정하고, 이를 디코딩하여 문자열(JSON)로 반환한다.
     """
-    secret_name = os.getenv("FIREBASE_SECRET_NAME")
-    region_name = "ap-northeast-2"
-
-    session = boto3.session.Session()
-    client = session.client(service_name='secretsmanager', region_name=region_name)
+    firebase_creds_b64 = os.getenv("FIREBASE_CREDENTIALS_B64")
+    if not firebase_creds_b64:
+        print("환경 변수 FIREBASE_CREDENTIALS_B64가 설정되어 있지 않습니다.")
+        return None
+    
     try:
-        get_secret_value_response = client.get_secret_value(SecretId=secret_name)
-    except ClientError as e:
-        # 로그/예외처리
-        raise e
-
-    # Plaintext JSON이 SecretString에 들어있다고 가정
-    return get_secret_value_response['SecretString']
+        # Base64 -> JSON 문자열
+        json_str = base64.b64decode(firebase_creds_b64).decode('utf-8')
+        return json_str
+    except Exception as e:
+        print("Firebase 자격 증명 Base64 디코딩 실패:", e)
+        return None
 
 def get_fcm_access_token():
     """
@@ -46,7 +47,7 @@ def get_fcm_access_token():
     cred_json_str = get_firebase_credentials_json()  # 아래 예시 함수로부터 가져온 문자열
     cred_json_dict = json.loads(cred_json_str)
 
-    credentials = service_account.Credentials.from_service_account_file(
+    credentials = service_account.Credentials.from_service_account_info(
         cred_json_dict,
         scopes=FIREBASE_SCOPES
     )
