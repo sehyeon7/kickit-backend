@@ -14,6 +14,8 @@ from django.utils.http import urlsafe_base64_decode
 import random
 import string
 from fcm_django.models import FCMDevice
+from django.core.files.uploadedfile import InMemoryUploadedFile
+from .supabase_utils import upload_verification_image_to_supabase
 
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
@@ -24,6 +26,7 @@ from django.core.mail import send_mail
 from rest_framework_simplejwt.tokens import RefreshToken, AccessToken
 from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken
 from rest_framework_simplejwt.exceptions import TokenError
+from rest_framework.parsers import MultiPartParser
 
 
 
@@ -37,6 +40,64 @@ from .serializers import (
 
 GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID')
 FRONTEND_HOST = os.getenv('FRONTEND_HOST')
+
+class VerificationImageUploadView(APIView):
+    """
+    유학생 인증 사진 업로드 API
+    """
+    permission_classes = [permissions.IsAuthenticated]
+    parser_classes = [MultiPartParser]
+
+    def post(self, request):
+        user_profile = request.user.profile
+        image_file = request.FILES.get("verification_image")
+
+        if not image_file or not isinstance(image_file, InMemoryUploadedFile):
+            return Response({"error": "유효한 이미지 파일이 필요합니다."}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # 파일 형식 검증 (JPG, PNG만 허용)
+        allowed_extensions = ["jpg", "jpeg", "png"]
+        file_ext = image_file.name.split('.')[-1].lower()
+
+        if file_ext not in allowed_extensions:
+            return Response({"error": "지원되지 않는 파일 형식입니다. JPG 또는 PNG 이미지를 업로드해주세요."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # 파일 크기 제한 (5MB 이하)
+        max_size = 5 * 1024 * 1024  # 5MB
+        if image_file.size > max_size:
+            return Response({"error": "파일 크기가 5MB를 초과할 수 없습니다."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Supabase Storage에 업로드
+        image_url = upload_verification_image_to_supabase(image_file)
+
+        if not image_url:
+            return Response({"error": "이미지 업로드 실패"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        # DB에 저장
+        user_profile.verification_image = image_url
+        user_profile.is_verified = False  # 사진 업로드 후 관리자가 승인해야 하므로 False
+        user_profile.save()
+
+        return Response(
+            {"detail": "인증 사진이 업로드되었습니다.", "verification_image_url": image_url},
+            status=status.HTTP_200_OK
+        )
+
+class VerificationStatusView(APIView):
+    """
+    유저의 인증 상태 조회 API
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        user_profile = request.user.profile
+        return Response(
+            {
+                "is_verified": user_profile.is_verified,
+                "verification_image_url": user_profile.verification_image,
+            },
+            status=status.HTTP_200_OK
+        )
 
 def validate_password(password):
     """
@@ -112,7 +173,7 @@ class UserSignupView(APIView):
         admission_year = data["admission_year"]
         password = data.get("password", None)
         google_sub = data.get("google_sub", None)
-
+    
         if User.objects.filter(email=email).exists():
             return Response({"error": "이미 가입된 이메일입니다."}, status=400)
         
@@ -259,7 +320,7 @@ class SchoolListView(generics.ListAPIView):
     /accounts/schools/
     => 전체 학교 목록을 반환
     """
-    queryset = School.objects.all().order_by('name')
+    queryset = School.objects.all().order_by('id')
     serializer_class = SchoolSerializer
 
 
