@@ -177,9 +177,17 @@ class CommentListCreateView(generics.ListCreateAPIView):
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
 
     def get_queryset(self):
+        user = self.request.user
         post_id = self.kwargs['post_id']
-        return Comment.objects.filter(post_id=post_id, parent__isnull=True).order_by('-created_at')
+        queryset = Comment.objects.filter(post_id=post_id, parent__isnull=True).order_by('-created_at')
         # parent가 없는 최상위 댓글만 조회 (대댓글은 replies 필드에서)
+
+        if user.is_authenticated:
+        # 차단한 유저의 댓글 제외
+            blocked_users = user.profile.blocked_users.all()
+            queryset = queryset.exclude(author__in=blocked_users)
+
+        return queryset
 
     def create(self, request, *args, **kwargs):
         """ 댓글 작성 시 예외 처리를 추가하여 상세한 에러 메시지 반환 """
