@@ -4,7 +4,8 @@ from .views import (
     BlockUserView,
     NicknameCheckView, ProfileUpdateView,
     SchoolListView, DepartmentListView,
-    PasswordResetRequestView, TokenRefreshView, RegisterFCMTokenView
+    PasswordResetRequestView, TokenRefreshView, RegisterFCMTokenView,
+    VerificationImageUploadView, VerificationStatusView
 )
 
 urlpatterns = [
@@ -40,4 +41,7 @@ urlpatterns = [
     path('password-reset/request/', PasswordResetRequestView.as_view(), name='password-reset-request'),
 
     path("register-fcm-token/", RegisterFCMTokenView.as_view(), name="register-fcm-token"),
+
+    path("upload-verification-image/", VerificationImageUploadView.as_view(), name="upload-verification-image"),
+    path("verification-status/", VerificationStatusView.as_view(), name="verification-status"),
 ]

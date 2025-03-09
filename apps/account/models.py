@@ -43,6 +43,11 @@ class UserProfile(models.Model):
     blocked_users = models.ManyToManyField(User, related_name='blocked_by', blank=True)
     fcm_token = models.CharField(max_length=255, blank=True, null=True)
 
+    # 유학생 인증 관련 필드
+    is_verified = models.BooleanField(default=False)  # 인증 여부
+    verification_image = models.URLField(max_length=500, blank=True, null=True)  # 인증 사진
+
+
     def __str__(self):
         return f"{self.user.username}'s Profile"
     
