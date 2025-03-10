@@ -37,7 +37,7 @@ class UserProfileSerializer(ModelSerializer):
         fields = [
             'user', 'nickname',
             'school', 'school_name',
-            'department', 'department_name'
+            'department', 'department_name', 'profile_image'
         ]
         read_only_fields = ['user', 'school_name', 'department_name']
 
