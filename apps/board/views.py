@@ -298,6 +298,10 @@ class CommentDeleteView(generics.DestroyAPIView):
         user = request.user
         comment = get_object_or_404(Comment, id=comment_id, post_id=post_id)
 
+        # 대댓글이 있는 경우 삭제 불가 (추가된 로직)
+        if comment.replies.exists():
+            return Response({"error": "대댓글이 있는 댓글은 삭제할 수 없습니다."}, status=status.HTTP_400_BAD_REQUEST)
+
         # 본인 댓글이거나 관리자인 경우 삭제 가능
         if comment.author != user and not user.is_staff:
             return Response({"error": "댓글을 삭제할 권한이 없습니다."}, status=status.HTTP_403_FORBIDDEN)
