@@ -211,7 +211,7 @@ class CommentListCreateView(generics.ListCreateAPIView):
         # parent가 없는 최상위 댓글만 조회 (대댓글은 replies 필드에서)
 
         if user.is_authenticated:
-        # 차단한 유저의 댓글 제외
+            # 차단한 유저의 댓글 제외
             blocked_users = user.profile.blocked_users.all()
             queryset = queryset.exclude(author__in=blocked_users)
 
@@ -286,6 +286,24 @@ class CommentLikeToggleView(generics.GenericAPIView):
             },
             status=status.HTTP_200_OK
         )
+
+class CommentDeleteView(generics.DestroyAPIView):
+    """
+    댓글 삭제 API
+    DELETE /board/<board_id>/posts/<post_id>/comments/<comment_id>/
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def delete(self, request, board_id, post_id, comment_id):
+        user = request.user
+        comment = get_object_or_404(Comment, id=comment_id, post_id=post_id)
+
+        # 본인 댓글이거나 관리자인 경우 삭제 가능
+        if comment.author != user and not user.is_staff:
+            return Response({"error": "댓글을 삭제할 권한이 없습니다."}, status=status.HTTP_403_FORBIDDEN)
+
+        comment.delete()
+        return Response({"detail": "댓글이 삭제되었습니다."}, status=status.HTTP_204_NO_CONTENT)
 
 class PostLikeToggleView(generics.GenericAPIView):
     """

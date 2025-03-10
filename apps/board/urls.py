@@ -6,7 +6,7 @@ from .views import (
     HidePostView,
     CommentListCreateView,
     CommentLikeToggleView,
-    PostLikeToggleView, ScrapToggleView
+    PostLikeToggleView, ScrapToggleView, CommentDeleteView
 )
 
 urlpatterns = [
@@ -28,6 +28,9 @@ urlpatterns = [
 
     # Comment Like
     path('<int:board_id>/posts/<int:post_id>/comments/<int:comment_id>/like/', CommentLikeToggleView.as_view(), name='comment-like-toggle'),
+
+    # 댓글 삭제
+    path('<int:board_id>/posts/<int:post_id>/comments/<int:comment_id>/', CommentDeleteView.as_view(), name='comment-delete'),
 
     # Post Like
     path('<int:board_id>/posts/<int:post_id>/like/', PostLikeToggleView.as_view(), name='post-like-toggle'),
