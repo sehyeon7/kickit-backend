@@ -15,6 +15,7 @@ import boto3
 import base64
 from botocore.exceptions import ClientError
 from django.conf import settings
+from django.core.mail import send_mail
 
 FIREBASE_SCOPES = ["https://www.googleapis.com/auth/firebase.messaging"]
 
@@ -196,3 +197,53 @@ def send_fcm_push_notification(user, title, message, post_id=None):
         print(f"{user.username}에게 푸시 알림 전송 성공")
     else:
         print(f"{user.username}에게 푸시 알림 전송 실패: {response.text}")
+
+def send_verification_notification(user, success=True):
+    """
+    유저 인증 성공/실패 시 In-app, Push, Email 알림 전송
+    """
+    title = "KickIt 회원 인증 결과"
+    
+    if success:
+        message = f"{user.username}님, 회원 인증이 승인되었습니다! 🎉 이제 앱의 모든 기능을 이용할 수 있습니다."
+    else:
+        message = f"{user.username}님, 회원 인증이 거절되었습니다. 다시 인증 사진을 업로드해 주세요."
+
+    # ✅ In-app 알림 저장
+    Notification.objects.create(
+        user=user,
+        title=title,
+        message=message
+    )
+
+    # ✅ Push 알림 전송 (유저의 FCM 기기 등록 여부 확인)
+    send_fcm_push_notification(user, title, message)
+
+    # ✅ Email 알림 전송
+    send_mail(
+        subject=title,
+        message=message,
+        from_email="no-reply@kickit.com",
+        recipient_list=[user.email],
+        fail_silently=False,
+    )
+
+def send_verification_failure_email(user):
+    """
+    유저 인증 실패 시 이메일 전송
+    """
+    subject = "회원가입 인증 실패 안내"
+    message = (
+        f"안녕하세요, {user.profile.nickname}님.\n\n"
+        "회원가입 인증 요청이 거절되었습니다. \n"
+        "문의 사항이 있으면 고객센터로 문의 부탁드립니다.\n"
+        "- 운영진 드림"
+    )
+
+    send_mail(
+        subject=subject,
+        message=message,
+        from_email="no-reply@kickit.com",
+        recipient_list=[user.email],
+        fail_silently=False,
+    )
