@@ -164,8 +164,15 @@ class ProfileImageUpdateSerializer(serializers.Serializer):
     """
     image = serializers.ImageField(validators=[validate_image_extension]) 
 
+class UserSerializer(serializers.ModelSerializer):
+    """문의한 유저 정보를 포함하는 Serializer"""
+    class Meta:
+        model = User
+        fields = ["id", "username"]  # 필요한 필드 추가 가능
+
 class ContactUsSerializer(serializers.ModelSerializer):
+    user = UserSerializer(read_only=True)
     class Meta:
         model = ContactUs
-        fields = ['id', 'email', 'title', 'details', 'created_at', 'is_resolved']
+        fields = ['id', 'user', 'email', 'title', 'details', 'created_at', 'is_resolved']
         read_only_fields = ['id', 'created_at', 'is_resolved']
