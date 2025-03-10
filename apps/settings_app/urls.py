@@ -3,7 +3,7 @@ from .views import (
     UserSettingDetailView,
     NicknameUpdateView, PasswordChangeView, UserDeactivateView,
     LikedPostsView, ScrappedPostsView, EmailUpdateView, ProfileImageUpdateView,
-    NotificationTypeListView, NotificationCategoryListView
+    NotificationTypeListView, NotificationCategoryListView, ContactUsCreateView, ContactUsListView
 )
 
 urlpatterns = [
@@ -22,4 +22,9 @@ urlpatterns = [
     path('deactivate/', UserDeactivateView.as_view(), name='user-deactivate'),
     path('liked-posts/', LikedPostsView.as_view(), name='liked-posts'),
     path('scrapped-posts/', ScrappedPostsView.as_view(), name='scrapped-posts'),
+    # 사용자가 문의 제출
+    path("contact-us/", ContactUsCreateView.as_view(), name="contact-us"),
+
+    # 관리자용 문의 목록 조회
+    path("admin/contact-us/", ContactUsListView.as_view(), name="admin-contact-us"),
 ]

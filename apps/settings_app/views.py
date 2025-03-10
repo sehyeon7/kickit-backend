@@ -10,14 +10,15 @@ from django.contrib.auth import logout
 from .supabase_utils import upload_image_to_supabase
 from django.db import models
 from apps.board.pagination import PostCursorPagination
+from django.contrib.admin.views.decorators import staff_member_required
+from django.utils.decorators import method_decorator
 
-
-from .models import UserSetting, NotificationType, NotificationCategory
+from .models import UserSetting, NotificationType, NotificationCategory, ContactUs
 from .serializers import (
     UserSettingSerializer, NicknameUpdateSerializer,
     PasswordChangeSerializer, UserDeactivateSerializer,
     ScrappedPostsSerializer, EmailUpdateSerializer,
-    ProfileImageUpdateSerializer, NotificationTypeSerializer, NotificationCategorySerializer
+    ProfileImageUpdateSerializer, NotificationTypeSerializer, NotificationCategorySerializer, ContactUsSerializer
 )
 from apps.board.serializers import PostSerializer
 from apps.account.models import UserProfile
@@ -265,3 +266,22 @@ class ScrappedPostsView(generics.ListAPIView):
 
     def get_queryset(self):
         return self.request.user.scrapped_posts.all().order_by('-created_at')
+
+class ContactUsCreateView(generics.CreateAPIView):
+    """
+    사용자가 문의하기 폼을 제출하면 데이터베이스에 저장하는 API
+    """
+    serializer_class = ContactUsSerializer
+    permission_classes = [permissions.AllowAny]
+
+    def perform_create(self, serializer):
+        user = self.request.user if self.request.user.is_authenticated else None
+        serializer.save(user=user)
+
+class ContactUsListView(generics.ListAPIView):
+    """
+    관리자가 문의 내역을 확인하는 API
+    """
+    serializer_class = ContactUsSerializer
+    permission_classes = [permissions.IsAdminUser]
+    queryset = ContactUs.objects.all().order_by("-created_at")

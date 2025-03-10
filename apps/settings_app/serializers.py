@@ -6,6 +6,8 @@ from apps.settings_app.models import NotificationType, NotificationCategory
 from django.core.validators import validate_email
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
+from rest_framework import serializers
+from .models import ContactUs
 
 def validate_image_extension(image):
     """
@@ -161,3 +163,9 @@ class ProfileImageUpdateSerializer(serializers.Serializer):
     프로필 이미지 변경 Serializer
     """
     image = serializers.ImageField(validators=[validate_image_extension]) 
+
+class ContactUsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ContactUs
+        fields = ['id', 'email', 'title', 'details', 'created_at', 'is_resolved']
+        read_only_fields = ['id', 'created_at', 'is_resolved']

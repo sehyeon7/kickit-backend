@@ -42,3 +42,17 @@ class UserSetting(models.Model):
 
     def __str__(self):
         return f"{self.user.username}'s Settings"
+
+class ContactUs(models.Model):
+    """
+    사용자가 문의를 남기면 저장되는 모델
+    """
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    email = models.EmailField(help_text="문의하는 사용자의 이메일")
+    title = models.CharField(max_length=255, help_text="문의 제목")
+    details = models.TextField(help_text="문의 내용")
+    created_at = models.DateTimeField(auto_now_add=True, help_text="문의 작성 시간")
+    is_resolved = models.BooleanField(default=False, help_text="처리 여부")
+
+    def __str__(self):
+        return f"{self.email} - {self.title} (처리됨: {self.is_resolved})"
