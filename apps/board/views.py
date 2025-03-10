@@ -148,7 +148,7 @@ class PostDetailView(generics.RetrieveUpdateDestroyAPIView):
         
         # 기존 이미지 리스트 (URL) + 새로 추가된 이미지 (MultipartFile)
         existing_images = self.request.data.getlist('existing_images', [])  # 문자열 리스트
-        new_images = self.request.FILES.getlist('new_images')  # MultipartFile 리스트
+        new_images = self.request.FILES.getlist('new_images',[])  # MultipartFile 리스트
 
         # 기존 DB의 이미지 URL 가져오기
         current_images = post.images.values_list('image_url', flat=True)
