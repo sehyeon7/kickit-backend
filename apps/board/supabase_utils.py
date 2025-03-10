@@ -49,3 +49,25 @@ def upload_image_to_supabase(django_file):
     except Exception as e:
         print("upload_image_to_supabase error:", e)
         return None
+
+def delete_image_from_supabase(image_url):
+    """
+    - Supabase Storage에서 특정 이미지 삭제
+    - image_url: 삭제할 이미지의 전체 URL
+    """
+    try:
+        # Supabase에서 관리하는 경로만 추출 (ex: "uuid.jpg")
+        file_name = image_url.split(f"{supabase_bucket}/")[-1]  # URL에서 파일명만 추출
+        
+        # 파일 삭제 요청
+        result = supabase.storage.from_(supabase_bucket).remove([file_name])
+
+        if result.get('error'):
+            print(f"Supabase delete error: {result['error']}")
+            return False  # 삭제 실패
+
+        return True  # 삭제 성공
+
+    except Exception as e:
+        print(f"delete_image_from_supabase error: {e}")
+        return False

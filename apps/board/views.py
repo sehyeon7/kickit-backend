@@ -9,6 +9,8 @@ from django.db.models import Q
 from rest_framework.exceptions import ValidationError, PermissionDenied
 
 from apps.notification.utils import handle_comment_notification, handle_like_notification, handle_mention_notification
+from django.core.files.uploadedfile import InMemoryUploadedFile
+from .supabase_utils import upload_image_to_supabase, delete_image_from_supabase
 
 from .models import Board, Post, Comment, PostLike, CommentLike
 from apps.settings_app.models import UserSetting
@@ -127,9 +129,14 @@ class PostDetailView(generics.RetrieveUpdateDestroyAPIView):
     def get_serializer_class(self):
         if self.request.method in ['PUT', 'PATCH']:
             return PostCreateUpdateSerializer
-        return PostSerializer
+        elif self.request.method == "GET":
+            return PostSerializer
+        return super().get_serializer_class()
 
     def perform_update(self, serializer):
+        if self.request.method not in ["PUT", "PATCH"]:
+            raise ValidationError({"error": "잘못된 요청 방식입니다. PUT 또는 PATCH를 사용하세요."})
+    
         post = self.get_object()
         if post.author != self.request.user:
             raise PermissionDenied("본인이 작성한 글만 수정할 수 있습니다.")
@@ -139,7 +146,28 @@ class PostDetailView(generics.RetrieveUpdateDestroyAPIView):
         if 'content' not in self.request.data:
             raise ValidationError({"content": ["이 필드는 필수입니다."]})
         
-        serializer.save()
+        # 기존 이미지 리스트 (URL) + 새로 추가된 이미지 (MultipartFile)
+        existing_images = self.request.data.getlist('existing_images', [])  # 문자열 리스트
+        new_images = self.request.FILES.getlist('new_images')  # MultipartFile 리스트
+
+        # 기존 DB의 이미지 URL 가져오기
+        current_images = post.images.values_list('image_url', flat=True)
+
+        # 삭제할 이미지 확인 후 Supabase에서 제거
+        images_to_delete = set(current_images) - set(existing_images)
+        for image_url in images_to_delete:
+            delete_image_from_supabase(image_url)
+
+        # 새로운 이미지 업로드 후 URL 저장
+        uploaded_image_urls = []
+        for image_file in new_images:
+            if isinstance(image_file, InMemoryUploadedFile):
+                image_url = upload_image_to_supabase(image_file)
+                if image_url:
+                    uploaded_image_urls.append(image_url)
+
+        # 기존 이미지 + 새로운 이미지 합쳐서 저장
+        serializer.save(images=existing_images + uploaded_image_urls)
     
     def perform_destroy(self, instance):
         if instance.author != self.request.user:
