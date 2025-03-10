@@ -111,14 +111,21 @@ def validate_password(password):
         raise ValueError("비밀번호는 특수문자를 포함해야 합니다.")
     return password
 
-def set_token_on_response_cookie(user: User) -> Response:
-    token = RefreshToken.for_user(user)
-    user_profile = UserProfile.objects.get(user=user)
-    user_profile_serializer = UserProfileSerializer(user_profile)
-    res = Response(user_profile_serializer.data, status=status.HTTP_200_OK)
-    res.set_cookie('refresh_token', value=str(token), samesite='None', httponly=True, secure=True)
-    res.set_cookie('access_token', value=str(token.access_token), samesite='None', httponly=True, secure=True)
-    return res
+def set_token_on_response_cookie(user: User, status_code=200) -> Response:
+    try:
+        token = RefreshToken.for_user(user)
+        user_profile = UserProfile.objects.get(user=user)
+        user_profile_serializer = UserProfileSerializer(user_profile)
+        
+        res = Response(user_profile_serializer.data, status=status_code)
+        res.set_cookie('refresh_token', value=str(token), samesite='None', httponly=True, secure=True)
+        res.set_cookie('access_token', value=str(token.access_token), samesite='None', httponly=True, secure=True)
+        
+        return res
+    
+    except Exception as e:
+        print(f"Error in set_token_on_response_cookie: {e}")
+        return Response({"error": "토큰 생성 중 오류가 발생했습니다."}, status=500)
 
 class GoogleAuthCheckView(APIView):
     """
