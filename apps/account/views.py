@@ -30,12 +30,12 @@ from rest_framework.parsers import MultiPartParser
 
 FRONTEND_HOST = os.getenv('FRONTEND_HOST')
 
-from .models import UserProfile, School, Department
+from .models import UserProfile, School, Department, AdmissionYear
 from .serializers import (
     UserSignupSerializer, GoogleAuthCheckSerializer, LoginSerializer, UserProfileSerializer,
     SchoolSerializer, DepartmentSerializer, GoogleLoginSerializer,
     NicknameCheckSerializer, ProfileUpdateSerializer,
-    PasswordResetRequestSerializer, PasswordResetSerializer
+    PasswordResetRequestSerializer, PasswordResetSerializer, AdmissionYearSerializer
 )
 
 GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID')
@@ -362,6 +362,14 @@ class DepartmentListView(generics.ListAPIView):
             raise ValidationError({"error": "school_id query parameter is required"})
         
         return Department.objects.filter(school_id=school_id).order_by('name')
+
+class AdmissionYearListView(generics.ListAPIView):
+    """
+    /accounts/admission_year/
+    => 전체 입학연도 목록을 반환
+    """
+    queryset = AdmissionYear.objects.all().order_by('id')
+    serializer_class = AdmissionYearSerializer
 
 class ProfileUpdateView(generics.UpdateAPIView):
     """

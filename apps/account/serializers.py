@@ -1,7 +1,7 @@
 from rest_framework.serializers import ModelSerializer
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import UserProfile, School, Department
+from .models import UserProfile, School, Department, AdmissionYear
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.utils.encoding import force_str, force_bytes
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
@@ -19,6 +19,12 @@ class DepartmentSerializer(serializers.ModelSerializer):
         model = Department
         fields = ['id', 'name', 'school_id', 'school_name']
 
+class AdmissionYearSerializer(serializers.Serializer):
+    class Meta:
+        model = AdmissionYear
+        fields = ['id', 'year']
+
+
 class UserSerializer(ModelSerializer):
     """
     간단 조회용
@@ -31,13 +37,14 @@ class UserProfileSerializer(ModelSerializer):
     user = UserSerializer(read_only=True)
     school_name = serializers.CharField(source='school.name', read_only=True)
     department_name = serializers.CharField(source='department.name', read_only=True)
+    admission_year = serializers.CharField(source='admission_year.year', read_only=True)
     profile_image = serializers.URLField(required=False) 
     class Meta:
         model = UserProfile
         fields = [
             'user', 'nickname',
             'school', 'school_name',
-            'department', 'department_name', 'profile_image'
+            'department', 'department_name', 'profile_image', 'admission_year'
         ]
         read_only_fields = ['user', 'school_name', 'department_name']
 
@@ -49,7 +56,7 @@ class UserSignupSerializer(serializers.Serializer):
     nickname = serializers.CharField(max_length=50)
     school = serializers.IntegerField()
     department = serializers.IntegerField()
-    admission_year = serializers.CharField(max_length=10)
+    admission_year = serializers.IntegerField()
     password = serializers.CharField(write_only=True, required=False)  # 일반 회원가입 용
     google_sub = serializers.CharField(write_only=True, required=False)  # 구글 로그인 용
 

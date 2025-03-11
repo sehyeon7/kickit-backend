@@ -25,13 +25,22 @@ class Department(models.Model):
     def __str__(self):
         return f"{self.school.name} - {self.name}"
 
+class AdmissionYear(models.Model):
+    """
+    회원가입 시 사용자가 선택할 수 있는 입학 연도 목록
+    """
+    year = models.CharField(max_length=20, unique=True)
+
+    def __str__(self):
+        return self.year
+
 
 class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
     google_sub = models.CharField(max_length=255, blank=True, null=True, unique=True)
     school = models.ForeignKey(School, null=True, blank=True, on_delete=models.SET_NULL)
     department = models.ForeignKey(Department, null=True, blank=True, on_delete=models.SET_NULL)
-    admission_year = models.CharField(max_length=20, blank=True, null=True)
+    admission_year = models.ForeignKey(AdmissionYear, null=True, blank=True, on_delete=models.SET_NULL)
     nickname = models.CharField(max_length=50, blank=True)
 
     profile_image = models.URLField(

@@ -5,7 +5,7 @@ from .views import (
     NicknameCheckView, ProfileUpdateView,
     SchoolListView, DepartmentListView,
     PasswordResetRequestView, TokenRefreshView, RegisterFCMTokenView,
-    VerificationImageUploadView, VerificationStatusView, PasswordResetView
+    VerificationImageUploadView, VerificationStatusView, PasswordResetView, AdmissionYearListView
 )
 
 urlpatterns = [
@@ -30,9 +30,10 @@ urlpatterns = [
     # 학교/학번/학과 입력
     path('profile/', ProfileUpdateView.as_view(), name='profile-update'),
 
-    # 학교/학과 검색
+    # 학교/학과/입학연도 검색
     path('schools/', SchoolListView.as_view(), name='school-list'),
     path('departments/', DepartmentListView.as_view(), name='department-list'),
+    path('admission_year/', AdmissionYearListView.as_view(), name='admission-year-list'),
 
     # 유저 차단
     path('block/<int:user_id>/', BlockUserView.as_view(), name='block-user'),
