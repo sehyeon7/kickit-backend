@@ -38,13 +38,16 @@ class UserProfileSerializer(ModelSerializer):
     school_name = serializers.CharField(source='school.name', read_only=True)
     department_name = serializers.CharField(source='department.name', read_only=True)
     admission_year = serializers.CharField(source='admission_year.year', read_only=True)
-    profile_image = serializers.URLField(required=False) 
+    profile_image = serializers.URLField(required=False)
+    is_verified = serializers.BooleanField(read_only=True)
+    verification_image = serializers.URLField(read_only=True) 
     class Meta:
         model = UserProfile
         fields = [
             'user', 'nickname',
             'school', 'school_name',
-            'department', 'department_name', 'profile_image', 'admission_year'
+            'department', 'department_name', 'profile_image', 'admission_year', 
+            'is_verified', 'verification_image'
         ]
         read_only_fields = ['user', 'school_name', 'department_name']
 
@@ -59,6 +62,8 @@ class UserSignupSerializer(serializers.Serializer):
     admission_year = serializers.IntegerField()
     password = serializers.CharField(write_only=True, required=False)  # 일반 회원가입 용
     google_sub = serializers.CharField(write_only=True, required=False)  # 구글 로그인 용
+    is_verified = serializers.BooleanField(default=False, read_only=True)
+    verification_image = serializers.URLField(read_only=True)
 
 class GoogleLoginSerializer(serializers.Serializer):
     id_token = serializers.CharField(write_only=True)

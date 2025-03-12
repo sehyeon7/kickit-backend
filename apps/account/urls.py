@@ -5,7 +5,7 @@ from .views import (
     NicknameCheckView, ProfileUpdateView,
     SchoolListView, DepartmentListView,
     PasswordResetRequestView, TokenRefreshView, RegisterFCMTokenView,
-    VerificationImageUploadView, VerificationStatusView, PasswordResetView, AdmissionYearListView
+    VerificationStatusView, PasswordResetView, AdmissionYearListView
 )
 
 urlpatterns = [
@@ -46,6 +46,5 @@ urlpatterns = [
 
     path("register-fcm-token/", RegisterFCMTokenView.as_view(), name="register-fcm-token"),
 
-    path("upload-verification-image/", VerificationImageUploadView.as_view(), name="upload-verification-image"),
     path("verification-status/", VerificationStatusView.as_view(), name="verification-status"),
 ]
