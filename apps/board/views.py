@@ -7,6 +7,9 @@ from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 from django.db.models import Q
 from rest_framework.exceptions import ValidationError, PermissionDenied
+from datetime import timedelta
+from django.utils.timezone import now
+from django.db.models import Count
 
 from apps.notification.utils import handle_comment_notification, handle_like_notification, handle_mention_notification
 from django.core.files.uploadedfile import InMemoryUploadedFile
@@ -30,7 +33,42 @@ class BoardListView(generics.ListAPIView):
     serializer_class = BoardSerializer
     permission_classes = [permissions.AllowAny]
 
+class PopularPostView(generics.RetrieveAPIView):
+    """
+    특정 게시판의 인기 게시물 조회 API
+    - 최근 10분 내 작성된 게시물 중 최고 좋아요 게시물 반환
+    - 10분 내 게시물이 없으면 이전 인기 게시물을 유지
+    """
+    serializer_class = PostSerializer
+    permission_classes = [permissions.AllowAny]
 
+    def get(self, request, board_id):
+        board = get_object_or_404(Board, id=board_id)
+
+        # 10분 내의 인기 게시물 찾기
+        ten_minutes_ago = now() - timedelta(minutes=10)
+        recent_popular_post = (
+            Post.objects.filter(board=board, created_at__gte=ten_minutes_ago)
+            .annotate(like_count=Count("likes"))
+            .order_by("-like_count", "-created_at")
+            .first()
+        )
+
+        # 10분 내 인기 게시물이 없으면, 이전 인기 게시물 유지
+        if not recent_popular_post:
+            recent_popular_post = (
+                Post.objects.filter(board=board)
+                .annotate(like_count=Count("likes"))
+                .order_by("-like_count", "-created_at")
+                .first()
+            )
+
+        if not recent_popular_post:
+            return Response({"error": "이 게시판에 게시글이 없습니다."}, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = self.get_serializer(recent_popular_post, context={"request": request})
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
 class PostListView(generics.ListAPIView):
     """
     전체 게시물 목록
@@ -215,6 +253,9 @@ class CommentListCreateView(generics.ListCreateAPIView):
             blocked_users = user.profile.blocked_users.all()
             queryset = queryset.exclude(author__in=blocked_users)
 
+            # 숨김 처리한 댓글 제외
+            queryset = queryset.exclude(hidden_by=user)
+
         return queryset
 
     def create(self, request, *args, **kwargs):
@@ -364,3 +405,24 @@ class ScrapToggleView(generics.GenericAPIView):
             # 스크랩 추가
             post.scrapped_by.add(user)
             return Response({"detail": "스크랩 추가"}, status=status.HTTP_200_OK)
+        
+class HideCommentView(generics.GenericAPIView):
+    """
+    POST /board/<board_id>/posts/<post_id>/comments/<comment_id>/hide/
+    => 로그인 유저가 특정 댓글 숨김/숨김 해제
+    => 숨김 처리된 댓글은 해당 유저에게만 보이지 않음
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, board_id, post_id, comment_id):
+        user = request.user
+        comment = get_object_or_404(Comment, id=comment_id, post_id=post_id)
+
+        if user in comment.hidden_by.all():
+            # 이미 숨김 처리된 경우 → 숨김 해제
+            comment.hidden_by.remove(user)
+            return Response({"detail": "해당 댓글의 숨김이 해제되었습니다."}, status=status.HTTP_200_OK)
+        else:
+            # 숨김 처리
+            comment.hidden_by.add(user)
+            return Response({"detail": "해당 댓글이 숨김 처리되었습니다."}, status=status.HTTP_200_OK)

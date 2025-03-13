@@ -6,7 +6,7 @@ from .views import (
     HidePostView,
     CommentListCreateView,
     CommentLikeToggleView,
-    PostLikeToggleView, ScrapToggleView, CommentDeleteView
+    PostLikeToggleView, ScrapToggleView, CommentDeleteView, HideCommentView, PopularPostView
 )
 
 urlpatterns = [
@@ -37,4 +37,10 @@ urlpatterns = [
 
     # Scrap
     path('<int:board_id>/posts/<int:post_id>/scrap/', ScrapToggleView.as_view(), name='scrap-toggle'),
+
+    # 댓글 숨김/숨김 해제 기능 추가
+    path('<int:board_id>/posts/<int:post_id>/comments/<int:comment_id>/hide/', HideCommentView.as_view(), name='comment-hide'),
+
+    path('<int:board_id>/posts/popular/', PopularPostView.as_view(), name='post-popular'),
+
 ]
