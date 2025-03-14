@@ -139,54 +139,42 @@ class PostListCreateView(generics.ListCreateAPIView):
         board = get_object_or_404(Board, id=board_id)
         serializer.save(board=board, author=self.request.user)
 
-
-class PostDetailView(generics.RetrieveUpdateDestroyAPIView):
+class PostDetailView(generics.RetrieveAPIView):
     """
-    특정 Post 상세/수정/삭제
-    /board/<board_id>/posts/<post_id>/
+    특정 Post 상세 조회
+    GET /board/<board_id>/posts/<post_id>/
     """
-    queryset = Post.objects.all()
     serializer_class = PostSerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    permission_classes = [permissions.AllowAny]
 
     def get_queryset(self):
         board_id = self.kwargs['board_id']
         get_object_or_404(Board, id=board_id)
         return Post.objects.filter(board_id=board_id)
-    
-    def get_object(self):
-        """
-        게시글이 실제 존재하는지 확인
-        """
-        board_id = self.kwargs.get("board_id")
-        post_id = self.kwargs.get("pk")
-        board = get_object_or_404(Board, id=board_id)
-        post = get_object_or_404(Post, id=post_id, board=board)
-        return post
 
-    def get_serializer_class(self):
-        if self.request.method in ['PUT', 'PATCH']:
-            return PostCreateUpdateSerializer
-        elif self.request.method == "GET":
-            return PostSerializer
-        return super().get_serializer_class()
+class PostUpdateView(generics.UpdateAPIView):
+    """
+    특정 Post 수정
+    PUT /board/<board_id>/posts/<post_id>/
+    PATCH /board/<board_id>/posts/<post_id>/
+    """
+    serializer_class = PostCreateUpdateSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        board_id = self.kwargs['board_id']
+        get_object_or_404(Board, id=board_id)
+        return Post.objects.filter(board_id=board_id, author=self.request.user)
 
     def perform_update(self, serializer):
-        if self.request.method not in ["PUT", "PATCH"]:
-            raise ValidationError({"error": "잘못된 요청 방식입니다. PUT 또는 PATCH를 사용하세요."})
-    
         post = self.get_object()
-        if post.author != self.request.user:
-            raise PermissionDenied("본인이 작성한 글만 수정할 수 있습니다.")
-        
-        if 'board_id' not in self.request.data:
-            raise ValidationError({"board_id": ["이 필드는 필수입니다."]})
+
         if 'content' not in self.request.data:
             raise ValidationError({"content": ["이 필드는 필수입니다."]})
-        
+
         # 기존 이미지 리스트 (URL) + 새로 추가된 이미지 (MultipartFile)
         existing_images = self.request.data.getlist('existing_images', [])  # 문자열 리스트
-        new_images = self.request.FILES.getlist('new_images',[])  # MultipartFile 리스트
+        new_images = self.request.FILES.getlist('new_images', [])  # MultipartFile 리스트
 
         # 기존 DB의 이미지 URL 가져오기
         current_images = post.images.values_list('image_url', flat=True)
@@ -206,7 +194,19 @@ class PostDetailView(generics.RetrieveUpdateDestroyAPIView):
 
         # 기존 이미지 + 새로운 이미지 합쳐서 저장
         serializer.save(images=existing_images + uploaded_image_urls)
-    
+
+class PostDeleteView(generics.DestroyAPIView):
+    """
+    특정 Post 삭제
+    DELETE /board/<board_id>/posts/<post_id>/
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        board_id = self.kwargs['board_id']
+        get_object_or_404(Board, id=board_id)
+        return Post.objects.filter(board_id=board_id, author=self.request.user)
+
     def perform_destroy(self, instance):
         if instance.author != self.request.user:
             raise PermissionDenied("본인이 작성한 글만 삭제할 수 있습니다.")

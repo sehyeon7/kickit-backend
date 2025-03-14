@@ -6,7 +6,8 @@ from .views import (
     HidePostView,
     CommentListCreateView,
     CommentLikeToggleView,
-    PostLikeToggleView, ScrapToggleView, CommentDeleteView, HideCommentView, PopularPostView
+    PostLikeToggleView, ScrapToggleView, CommentDeleteView, HideCommentView, PopularPostView,
+    PostUpdateView, PostDeleteView
 )
 
 urlpatterns = [
@@ -18,7 +19,15 @@ urlpatterns = [
 
     # Post
     path('<int:board_id>/posts/', PostListCreateView.as_view(), name='post-list-create'),
-    path('<int:board_id>/posts/<int:pk>/', PostDetailView.as_view(), name='post-detail'),
+
+    # 게시글 상세 조회
+    path('<int:board_id>/posts/<int:post_id>/', PostDetailView.as_view(), name='post-detail'),
+
+    # 게시글 수정
+    path('<int:board_id>/posts/<int:post_id>/update/', PostUpdateView.as_view(), name='post-update'),
+
+    # 게시글 삭제
+    path('<int:board_id>/posts/<int:post_id>/delete/', PostDeleteView.as_view(), name='post-delete'),
 
     # Hide / Block
     path('<int:board_id>/posts/<int:post_id>/hide/', HidePostView.as_view(), name='post-hide'),
