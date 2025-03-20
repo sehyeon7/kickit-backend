@@ -126,13 +126,17 @@ class PostCreateUpdateSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("존재하지 않는 board_id 입니다.")
         return value
     
-    def validate_content(self, value):
+    def validate(self, data):
         """
-        `content` 필드가 비어있지 않은지 확인
+        `content`와 `images` 둘 다 비어있으면 에러 반환
         """
-        if not value.strip():
-            raise serializers.ValidationError("게시글 내용은 필수 입력 항목입니다.")
-        return value
+        content = data.get("content", "").strip()
+        images = data.get("images", [])
+
+        if not content and not images:
+            raise serializers.ValidationError("게시글 내용 또는 이미지를 최소 하나 이상 포함해야 합니다.")
+        
+        return data
 
     def create(self, validated_data):
         board_id = validated_data.pop('board_id')
