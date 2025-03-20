@@ -38,28 +38,40 @@ class UserSettingDetailView(generics.RetrieveUpdateAPIView):
         setting, _ = UserSetting.objects.get_or_create(user=self.request.user)
         return setting
     
-    def update(self, request, *args, **kwargs):
+    def patch(self, request, *args, **kwargs):
         """
-        알림 설정 변경 시, 유효한 notification_type 및 notification_categories만 허용
+        - `notification_type`: ID 배열로 업데이트 (예: { "notification_type": [1] })
+        - `notification_categories`: ID 배열로 업데이트 (예: { "notification_categories": [1, 2, 3] })
         """
         data = request.data
         user_setting = self.get_object()
 
-        # notification_type 검증
-        notification_type_id = data.get("notification_type", {}).get("id")
-        if notification_type_id:
-            try:
-                user_setting.notification_type = NotificationType.objects.get(id=notification_type_id)
-            except NotificationType.DoesNotExist:
-                return Response({"error": "유효하지 않은 notification_type ID입니다."}, status=status.HTTP_400_BAD_REQUEST)
+        # notification_type 업데이트
+        if "notification_type" in data:
+            notification_type_ids = data.get("notification_type", [])
+            if not isinstance(notification_type_ids, list) or len(notification_type_ids) > 1:
+                return Response({"error": "notification_type은 단일 ID를 가진 배열이어야 합니다."}, status=status.HTTP_400_BAD_REQUEST)
 
-        # notification_categories 검증
-        category_ids = [cat["id"] for cat in data.get("notification_categories", [])]
-        valid_categories = NotificationCategory.objects.filter(id__in=category_ids)
-        if len(valid_categories) != len(category_ids):
-            return Response({"error": "유효하지 않은 notification_categories ID가 포함되어 있습니다."}, status=status.HTTP_400_BAD_REQUEST)
+            if notification_type_ids:
+                try:
+                    user_setting.notification_type = NotificationType.objects.get(id=notification_type_ids[0])
+                except NotificationType.DoesNotExist:
+                    return Response({"error": "유효하지 않은 notification_type ID입니다."}, status=status.HTTP_400_BAD_REQUEST)
+            else:
+                user_setting.notification_type = None  # 선택된 타입이 없을 경우 초기화
 
-        user_setting.notification_categories.set(valid_categories)
+        # notification_categories 업데이트
+        if "notification_categories" in data:
+            category_ids = data.get("notification_categories", [])
+            if not isinstance(category_ids, list):
+                return Response({"error": "notification_categories는 ID 배열이어야 합니다."}, status=status.HTTP_400_BAD_REQUEST)
+
+            valid_categories = NotificationCategory.objects.filter(id__in=category_ids)
+            if len(valid_categories) != len(category_ids):
+                return Response({"error": "유효하지 않은 notification_categories ID가 포함되어 있습니다."}, status=status.HTTP_400_BAD_REQUEST)
+
+            user_setting.notification_categories.set(valid_categories)
+
         user_setting.save()
 
         return Response(UserSettingSerializer(user_setting).data, status=status.HTTP_200_OK)

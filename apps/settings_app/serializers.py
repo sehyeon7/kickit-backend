@@ -40,33 +40,30 @@ class NotificationCategorySerializer(serializers.ModelSerializer):
 class UserSettingSerializer(serializers.ModelSerializer):
     """
     유저 알림 설정 Serializer
+    - `notification_type`: 배열로 반환 (최대 1개)
+    - `notification_categories`: 배열 유지
     """
-    notification_type = NotificationTypeSerializer()
-    notification_categories = NotificationCategorySerializer(many=True)
+    notification_type = serializers.SerializerMethodField()
+    notification_categories = serializers.SerializerMethodField()
 
     class Meta:
         model = UserSetting
         fields = ['notification_type', 'notification_categories']
 
-    def update(self, instance, validated_data):
+    def get_notification_type(self, obj):
         """
-        알림 설정 업데이트
+        단일 notification_type을 배열로 감싸서 반환
         """
-        notification_type_data = validated_data.pop('notification_type', None)
-        notification_categories_data = validated_data.pop('notification_categories', [])
+        if obj.notification_type:
+            return [obj.notification_type.id]
+        return []
 
-        # 알림 타입 업데이트
-        if notification_type_data:
-            notification_type = NotificationType.objects.get(id=notification_type_data['id'])
-            instance.notification_type = notification_type
+    def get_notification_categories(self, obj):
+        """
+        notification_categories를 ID 배열로 반환
+        """
+        return list(obj.notification_categories.values_list("id", flat=True))
 
-        # 알림 카테고리 업데이트
-        instance.notification_categories.set([
-            NotificationCategory.objects.get(id=cat['id']) for cat in notification_categories_data
-        ])
-
-        instance.save()
-        return instance
 
 class NicknameUpdateSerializer(serializers.Serializer):
     """
