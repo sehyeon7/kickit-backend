@@ -225,7 +225,15 @@ class UserDeactivateView(views.APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
+        serializer = UserDeactivateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        password = serializer.validated_data["password"]
         user = request.user
+
+        # 비밀번호 검증
+        if not user.check_password(password):
+            return Response({"error": "비밀번호가 올바르지 않습니다."}, status=status.HTTP_400_BAD_REQUEST)
 
         # 유저 비활성화 (DB에는 유지)
         user.is_active = False

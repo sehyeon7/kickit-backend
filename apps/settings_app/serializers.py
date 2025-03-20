@@ -144,7 +144,7 @@ class UserDeactivateSerializer(serializers.Serializer):
     """
     회원 탈퇴(또는 비활성화)
     """
-    confirm = serializers.BooleanField()
+    password = serializers.CharField(write_only=True, required=True)
 
 class ScrappedPostsSerializer(serializers.Serializer):
     """
