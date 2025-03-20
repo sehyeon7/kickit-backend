@@ -54,7 +54,7 @@ class UserProfile(models.Model):
 
     # 유학생 인증 관련 필드
     is_verified = models.BooleanField(default=False)  # 인증 여부
-    verification_image = models.URLField(max_length=500, blank=True, null=True)  # 인증 사진
+    verification_image = models.JSONField(default=list)
 
 
     def __str__(self):

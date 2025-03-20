@@ -13,6 +13,7 @@ from django.utils.encoding import force_str
 from django.utils.http import urlsafe_base64_decode
 import random
 import string
+import json
 from fcm_django.models import FCMDevice
 from django.core.files.uploadedfile import InMemoryUploadedFile
 from .supabase_utils import upload_verification_image_to_supabase
@@ -159,7 +160,7 @@ class UserSignupView(APIView):
         if User.objects.filter(email=email).exists():
             return Response({"error": "이미 가입된 이메일입니다."}, status=400)
         
-        # ✅ 학교 및 학과 존재 여부 확인
+        # 학교 및 학과 존재 여부 확인
         school = School.objects.filter(id=school_id).first()
         department = Department.objects.filter(id=department_id).first()
         if not school or not department:
@@ -181,21 +182,24 @@ class UserSignupView(APIView):
         
         # 파일 형식 검증 (JPG, PNG만 허용)
         allowed_extensions = ["jpg", "jpeg", "png"]
-        file_ext = verification_image.name.split('.')[-1].lower()
+        max_size = 5 * 1024 * 1024
+        
+        image_urls = []
+        for image_file in verification_image:
+            file_ext = image_file.name.split('.')[-1].lower()
 
-        if file_ext not in allowed_extensions:
-            return Response({"error": "지원되지 않는 파일 형식입니다. JPG 또는 PNG 이미지를 업로드해주세요."}, status=status.HTTP_400_BAD_REQUEST)
+            if file_ext not in allowed_extensions:
+                return Response({"error": "지원되지 않는 파일 형식입니다. JPG 또는 PNG 이미지를 업로드해주세요."}, status=status.HTTP_400_BAD_REQUEST)
 
-        # 파일 크기 제한 (5MB 이하)
-        max_size = 5 * 1024 * 1024  # 5MB
-        if verification_image.size > max_size:
-            return Response({"error": "파일 크기가 5MB를 초과할 수 없습니다."}, status=status.HTTP_400_BAD_REQUEST)
+            if image_file.size > max_size:
+                return Response({"error": "파일 크기가 5MB를 초과할 수 없습니다."}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Supabase Storage에 업로드
-        image_url = upload_verification_image_to_supabase(verification_image)
+            # Supabase Storage에 업로드
+            image_url = upload_verification_image_to_supabase(image_file)
+            if not image_url:
+                return Response({"error": "이미지 업로드 실패"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-        if not image_url:
-            return Response({"error": "이미지 업로드 실패"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            image_urls.append(image_url)  # 업로드된 URL 저장
 
         user = User.objects.create(username=email, email=email)
         if password:
@@ -207,7 +211,7 @@ class UserSignupView(APIView):
         UserProfile.objects.create(
             user=user, google_sub=google_sub, nickname=nickname,
             school_id=school_id, department_id=department_id,
-            admission_year=admission_year, is_verified=is_verified, verification_image=image_url
+            admission_year=admission_year, is_verified=is_verified, verification_image=json.dumps(image_urls)
         )
 
         user.refresh_from_db()
