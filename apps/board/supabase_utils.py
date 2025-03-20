@@ -2,6 +2,7 @@ import os
 import uuid
 from supabase import create_client, Client
 from django.conf import settings
+import mimetypes
 from django.core.files.base import ContentFile
 
 # 환경 변수
@@ -11,14 +12,29 @@ supabase_bucket = settings.SUPABASE_BUCKET
 
 supabase: Client = create_client(supabase_url, supabase_anon_public_key)
 
+# 허용할 확장자 목록
+ALLOWED_EXTENSIONS = {"jpg", "jpeg", "png", "gif", "webp"}
+
+
 def upload_image_to_supabase(django_file):
     """
     - django_file : ImageField로 들어온 File 객체
     - Supabase Storage에 업로드 후, public URL 반환
+    - gif / webp 확장자 허용
     """
     try:
         # 파일 확장자 추출
         file_ext = django_file.name.split('.')[-1]
+
+        if file_ext not in ALLOWED_EXTENSIONS:
+            print(f"Unsupported file extension: {file_ext}")
+            return None
+
+        # MIME 타입 자동 감지 (안전하게 파일을 업로드하기 위해)
+        mime_type, _ = mimetypes.guess_type(django_file.name)
+        if not mime_type:
+            mime_type = "application/octet-stream"  # 기본 MIME 타입 (안전용)
+
         file_name = f"{uuid.uuid4()}.{file_ext}"
 
         # Supabase Storage에 업로드할 경로 (예: "2025/02/19/uuid.jpg" 등)
@@ -30,7 +46,8 @@ def upload_image_to_supabase(django_file):
         # 업로드 (RFC 4648 base64 이슈 없도록 binary 전송)
         result = supabase.storage.from_(supabase_bucket).upload(
             path=storage_path,
-            file=file_data
+            file=file_data,
+            file_options={"contentType": mime_type} 
         )
         # result 예) {'Key': 'post-images/uuid.jpg', ...} 업로드 성공 여부는 result.error로 확인 가능
 
