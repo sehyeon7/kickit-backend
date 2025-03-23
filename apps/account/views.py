@@ -184,8 +184,6 @@ class UserSignupView(APIView):
             except ValueError as e:
                 return Response({"password": [str(e)]}, status=400)
         
-        if not verification_images or not isinstance(verification_images, InMemoryUploadedFile):
-            return Response({"error": "유효한 이미지 파일이 필요합니다."}, status=status.HTTP_400_BAD_REQUEST)
         
         # 파일 형식 검증 (JPG, PNG만 허용)
         allowed_extensions = ["jpg", "jpeg", "png"]
