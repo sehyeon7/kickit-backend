@@ -154,8 +154,11 @@ class UserSignupView(APIView):
         admission_year = data["admission_year"]
         password = data.get("password", None)
         google_sub = data.get("google_sub", None)
-        verification_image = request.FILES.get("verification_image")
         is_verified = False
+
+        verification_images = request.FILES.getlist("verification_image", [])
+        if not verification_images:
+            return Response({"error": "유효한 인증 이미지가 필요합니다."}, status=status.HTTP_400_BAD_REQUEST)
 
         if User.objects.filter(email=email).exists():
             return Response({"error": "이미 가입된 이메일입니다."}, status=400)
@@ -177,7 +180,7 @@ class UserSignupView(APIView):
             except ValueError as e:
                 return Response({"password": [str(e)]}, status=400)
         
-        if not verification_image or not isinstance(verification_image, InMemoryUploadedFile):
+        if not verification_images or not isinstance(verification_images, InMemoryUploadedFile):
             return Response({"error": "유효한 이미지 파일이 필요합니다."}, status=status.HTTP_400_BAD_REQUEST)
         
         # 파일 형식 검증 (JPG, PNG만 허용)
@@ -185,7 +188,7 @@ class UserSignupView(APIView):
         max_size = 5 * 1024 * 1024
         
         image_urls = []
-        for image_file in verification_image:
+        for image_file in verification_images:
             file_ext = image_file.name.split('.')[-1].lower()
 
             if file_ext not in allowed_extensions:
@@ -211,7 +214,7 @@ class UserSignupView(APIView):
         UserProfile.objects.create(
             user=user, google_sub=google_sub, nickname=nickname,
             school_id=school_id, department_id=department_id,
-            admission_year=admission_year, is_verified=is_verified, verification_image=json.dumps(image_urls)
+            admission_year=admission_year, is_verified=is_verified, verification_image=image_urls
         )
 
         user.refresh_from_db()
