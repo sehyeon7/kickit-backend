@@ -19,7 +19,7 @@ class DepartmentSerializer(serializers.ModelSerializer):
         model = Department
         fields = ['id', 'name', 'school_id', 'school_name']
 
-class AdmissionYearSerializer(serializers.Serializer):
+class AdmissionYearSerializer(serializers.ModelSerializer):
     class Meta:
         model = AdmissionYear
         fields = ['id', 'year']
