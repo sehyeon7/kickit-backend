@@ -144,6 +144,8 @@ class PostDetailView(generics.RetrieveAPIView):
     """
     serializer_class = PostSerializer
     permission_classes = [permissions.AllowAny]
+    lookup_field = 'id'  # Post 모델의 기본 pk
+    lookup_url_kwarg = 'post_id'  # URLConf에서의 변수명
 
     def get_queryset(self):
         board_id = self.kwargs['board_id']
@@ -158,6 +160,8 @@ class PostUpdateView(generics.UpdateAPIView):
     """
     serializer_class = PostCreateUpdateSerializer
     permission_classes = [permissions.IsAuthenticated]
+    lookup_field = 'id'
+    lookup_url_kwarg = 'post_id'
 
     def get_queryset(self):
         board_id = self.kwargs['board_id']
@@ -199,6 +203,8 @@ class PostDeleteView(generics.DestroyAPIView):
     DELETE /board/<board_id>/posts/<post_id>/
     """
     permission_classes = [permissions.IsAuthenticated]
+    lookup_field = 'id'
+    lookup_url_kwarg = 'post_id'
 
     def get_queryset(self):
         board_id = self.kwargs['board_id']
