@@ -9,9 +9,6 @@ supabase_bucket = settings.SUPABASE_BUCKET
 
 supabase: Client = create_client(supabase_url, supabase_anon_public_key)
 
-import logging
-
-logger = logging.getLogger(__name__)
 from sentry_sdk import capture_message, capture_exception
 
 def upload_verification_image_to_supabase(django_file):
