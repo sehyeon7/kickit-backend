@@ -162,3 +162,16 @@ class PasswordResetSerializer(serializers.Serializer):
         if not any(char.isalpha() for char in value):
             raise serializers.ValidationError("비밀번호에는 영문자가 포함되어야 합니다.")
         return value
+
+class BlockedUserSerializer(serializers.ModelSerializer):
+    nickname = serializers.SerializerMethodField()
+
+    class Meta:
+        model = User
+        fields = ["id", "username", "nickname"]
+
+    def get_nickname(self, obj):
+        # User 모델에서 UserProfile.nickname을 가져오려면
+        # user.profile.nickname이 존재하면 반환
+        profile = getattr(obj, 'profile', None)
+        return profile.nickname if profile else None

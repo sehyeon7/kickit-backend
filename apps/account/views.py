@@ -36,7 +36,7 @@ from .serializers import (
     UserSignupSerializer, GoogleAuthCheckSerializer, LoginSerializer, UserProfileSerializer,
     SchoolSerializer, DepartmentSerializer, GoogleLoginSerializer,
     NicknameCheckSerializer, ProfileUpdateSerializer,
-    PasswordResetRequestSerializer, PasswordResetSerializer, AdmissionYearSerializer
+    PasswordResetRequestSerializer, PasswordResetSerializer, AdmissionYearSerializer, BlockedUserSerializer
 )
 
 GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID')
@@ -414,7 +414,18 @@ class BlockUserView(APIView):
                 {"message": "사용자 차단을 해제했습니다.", "blocked_user_id": target_user.id},
                 status=status.HTTP_200_OK
             )
-        
+
+class BlockedUsersListView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        # 현재 로그인된 유저의 프로필
+        profile = request.user.profile
+        # 차단된 유저 목록 쿼리셋
+        blocked_users_qs = profile.blocked_users.all().order_by('id')
+
+        serializer = BlockedUserSerializer(blocked_users_qs, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 class PasswordResetRequestView(APIView):
     """
