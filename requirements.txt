@@ -55,6 +55,7 @@ msgpack==1.1.0
 multidict==6.1.0
 packaging==24.2
 pathspec==0.10.1
+pillow==11.1.0
 postgrest==0.19.3
 propcache==0.2.1
 proto-plus==1.26.0
