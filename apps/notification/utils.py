@@ -56,7 +56,7 @@ def get_fcm_access_token():
     credentials.refresh(Request())  # 토큰 갱신
     return credentials.token
 
-def send_notification(user, title, message, post_id=None):
+def send_notification(user, title, message, post_id=None, comment_id=None):
     """
     user의 알림 설정(UserSetting)을 확인해, In-app 알림 / Push 알림을 보낸다.
     """
@@ -66,6 +66,7 @@ def send_notification(user, title, message, post_id=None):
         title=title,
         message=message,
         post_id=post_id,
+        comment_id=comment_id,
     )
     # 2) user.setting.notification_type 확인
     user_setting = UserSetting.objects.filter(user=user).first()
@@ -75,7 +76,7 @@ def send_notification(user, title, message, post_id=None):
 
     if user_setting.notification_type == NotificationType.PUSH_IN_APP:
         # 실제로는 FCM, APNs, SMS 등 Push 로직 필요
-        send_fcm_push_notification(user, message)
+        send_fcm_push_notification(user, title, message, post_id=post_id, comment_id=comment_id)
 
 def handle_comment_notification(comment, post, parent_comment):
     """
@@ -149,7 +150,7 @@ def handle_mention_notification(comment, mention_usernames):
         except User.DoesNotExist:
             continue  # 존재하지 않는 유저는 무시
 
-def send_fcm_push_notification(user, title, message, post_id=None):
+def send_fcm_push_notification(user, title, message, post_id=None, comment_id=None):
     """
     특정 유저에게 FCM Push 알림을 전송하는 함수
     """
@@ -174,6 +175,7 @@ def send_fcm_push_notification(user, title, message, post_id=None):
             },
             "data": {
                 "post_id": str(post_id) if post_id else "",
+                "comment_id": str(comment_id) if comment_id else "",
                 "click_action": "FLUTTER_NOTIFICATION_CLICK"
             },
             "android": {
