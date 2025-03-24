@@ -32,8 +32,8 @@ def upload_verification_image_to_supabase(django_file):
             file=file_data
         )
 
-        if result.error:
-            error_info = result.error
+        if result.code != 200:
+            error_info = result.message
             # logger.error(f"Supabase upload error: {error_info}")
             capture_message(f"Supabase upload error: {error_info}")
             return None
