@@ -160,9 +160,9 @@ class UserSignupView(APIView):
         if not verification_images:
             return Response({"error": "유효한 인증 이미지가 필요합니다."}, status=status.HTTP_400_BAD_REQUEST)
         
-        year_obj = AdmissionYear.objects.filter(id=admission_year).first()
+        year_obj = AdmissionYear.objects.filter(year=admission_year).first()
         if not year_obj:
-            return Response({"error": "유효한 입학연도 ID가 아닙니다."}, status=400)
+            return Response({"error": "유효한 입학연도가 아닙니다."}, status=400)
 
         if User.objects.filter(email=email).exists():
             return Response({"error": "이미 가입된 이메일입니다."}, status=400)
