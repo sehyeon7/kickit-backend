@@ -32,11 +32,11 @@ def upload_verification_image_to_supabase(django_file):
             file=file_data
         )
 
-        if result.code != 200:
-            error_info = result.message
-            # logger.error(f"Supabase upload error: {error_info}")
-            capture_message(f"Supabase upload error: {error_info}")
-            return None
+        # if result.code != 200:
+        #     error_info = result.message
+        #     # logger.error(f"Supabase upload error: {error_info}")
+        #     capture_message(f"Supabase upload error: {error_info}")
+        #     return None
 
         # Public URL 생성
         public_url = f"{supabase_url}/storage/v1/object/public/{supabase_bucket}/{storage_path}"
