@@ -9,6 +9,11 @@ supabase_bucket = settings.SUPABASE_BUCKET
 
 supabase: Client = create_client(supabase_url, supabase_anon_public_key)
 
+import logging
+
+logger = logging.getLogger(__name__)
+from sentry_sdk import capture_message, capture_exception
+
 def upload_verification_image_to_supabase(django_file):
     """
     - 유학생 인증 사진을 Supabase Storage에 업로드 후, public URL 반환
@@ -31,7 +36,9 @@ def upload_verification_image_to_supabase(django_file):
         )
 
         if result.get('error'):
-            print("Supabase upload error:", result['error'])
+            error_info = result['error']
+            # logger.error(f"Supabase upload error: {error_info}")
+            capture_message(f"Supabase upload error: {error_info}")
             return None
 
         # Public URL 생성
@@ -39,5 +46,6 @@ def upload_verification_image_to_supabase(django_file):
         return public_url
 
     except Exception as e:
-        print("upload_verification_image_to_supabase error:", e)
+        # logger.exception("upload_verification_image_to_supabase error:")
+        capture_exception(e)
         return None
