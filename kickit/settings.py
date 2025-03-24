@@ -20,6 +20,7 @@ import json
 import boto3
 from firebase_admin import credentials, initialize_app
 from botocore.exceptions import ClientError
+import sentry_sdk
 
 env = environ.Env(
     DEBUG=(bool, True)
@@ -91,6 +92,12 @@ else:
 #     initialize_app(cred)
 # except Exception as e:
 #     print("Failed to initialize Firebase Admin:", e)
+
+sentry_sdk.init(
+    dsn=os.environ.get("SENTRY_DSN", ""), 
+    traces_sample_rate=1.0, 
+    send_default_pii=True,
+)
 
 
 # SECURITY WARNING: don't run with debug turned on in production!
