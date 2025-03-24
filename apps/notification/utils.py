@@ -122,12 +122,14 @@ def handle_like_notification(user, post_or_comment, is_post=True):
         title = "당신의 글이 좋아요를 받았습니다!"
         message = f"'{post_or_comment.content}'"
         post_id = post_or_comment.id 
+        comment_id = None
     else:
         title = "당신의 댓글이 좋아요를 받았습니다!"
         message = f"'{post_or_comment.content}'"
         post_id = post_or_comment.post.id  
+        comment_id = post_or_comment.id
 
-    send_notification(target_author, title, message, post_id)
+    send_notification(target_author, title, message, post_id=post_id, comment_id=comment_id)
 
 def handle_mention_notification(comment, mention_usernames):
     """
