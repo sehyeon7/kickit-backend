@@ -22,9 +22,9 @@ def upload_image_to_supabase(django_file):
         file_data = django_file.read()
         result = supabase.storage.from_(supabase_bucket).upload(path=file_name, file=file_data)
 
-        if result.get('error'):
-            print("Supabase upload error:", result['error'])
-            return None
+        # if result.get('error'):
+        #     print("Supabase upload error:", result['error'])
+        #     return None
 
         # Public URL 생성
         public_url = f"{supabase_url}/storage/v1/object/public/{supabase_bucket}/{file_name}"
