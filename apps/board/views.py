@@ -49,8 +49,8 @@ class PopularPostView(generics.RetrieveAPIView):
         ten_minutes_ago = now() - timedelta(minutes=10)
         recent_popular_post = (
             Post.objects.filter(board=board, created_at__gte=ten_minutes_ago)
-            .annotate(like_count=Count("likes"))
-            .order_by("-like_count", "-created_at")
+            .annotate(num_likes=Count("likes"))
+            .order_by("num_likes", "-created_at")
             .first()
         )
 
