@@ -58,8 +58,8 @@ class PopularPostView(generics.RetrieveAPIView):
         if not recent_popular_post:
             recent_popular_post = (
                 Post.objects.filter(board=board)
-                .annotate(like_count=Count("likes"))
-                .order_by("-like_count", "-created_at")
+                .annotate(num_likes=Count("likes"))
+                .order_by("-num_likes", "-created_at")
                 .first()
             )
 
