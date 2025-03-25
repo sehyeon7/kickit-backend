@@ -36,7 +36,8 @@ class CommentSerializer(serializers.ModelSerializer):
         read_only_fields = ['user_id', 'user_profile_image', 'user_nickname', 'reply_target_user_nickname', 'like_count', 'is_liked']
 
     def get_user_profile_image(self, obj):
-        return obj.author.profile.image.url if hasattr(obj.author, 'profile') and obj.author.profile.image else None
+        profile = getattr(obj.author, 'profile', None)
+        return profile.profile_image if profile and profile.profile_image else None
     
     def get_user_nickname(self, obj):
         return obj.author_nickname
