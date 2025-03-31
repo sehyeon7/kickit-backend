@@ -263,8 +263,8 @@ CORS_ALLOW_CREDENTIALS = True
 
 from datetime import timedelta 
 REST_USE_JWT = True 
-SIMPLE_JWT = {  'ACCESS_TOKEN_LIFETIME': timedelta(minutes=30), 
-                'REFRESH_TOKEN_LIFETIME': timedelta(days=1), 
+SIMPLE_JWT = {  'ACCESS_TOKEN_LIFETIME': timedelta(days=7), 
+                'REFRESH_TOKEN_LIFETIME': timedelta(days=14), 
                 'ROTATE_REFRESH_TOKENS': True, 
                 'BLACKLIST_AFTER_ROTATION': True, 
                 'SIGNING_KEY': SECRET_KEY,
