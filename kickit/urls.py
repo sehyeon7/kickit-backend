@@ -16,10 +16,26 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 
 def index(request):
     return HttpResponse("OK", status=200)
+
+def apple_app_site_association(request):
+    data = {
+    "applinks": {
+        "apps": [],
+        "details": [
+            {
+                "appID": "5CH6LD5K2X.com.snulife.snulifeInternational",
+                "paths": [
+                    "*"
+                ]
+            }
+        ]
+    }
+    }   
+    return JsonResponse(data, content_type='application/json')
 
 urlpatterns = [
     path('', index),
@@ -28,4 +44,5 @@ urlpatterns = [
     path('board/', include('apps.board.urls')),
     path('notification/', include('apps.notification.urls')),
     path('settings/', include('apps.settings_app.urls')),
+    path('.well-known/apple-app-site-association', apple_app_site_association),
 ]
