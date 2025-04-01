@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from django.shortcuts import get_object_or_404
 from django.contrib.auth.models import User
-from .models import Board, Post, Comment, PostLike, LikeType, PostImage, CommentLike
+from .models import Board, Post, Comment, PostLike, LikeType, PostImage, CommentLike, SearchHistory
 
 class BoardSerializer(serializers.ModelSerializer):
     class Meta:
@@ -161,3 +161,8 @@ class PostCreateUpdateSerializer(serializers.ModelSerializer):
             except Exception as e:
                 raise serializers.ValidationError({"images": ["이미지 업로드 중 오류가 발생했습니다."]})
         return post
+
+class SearchHistorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SearchHistory
+        fields = ['id', 'keyword']

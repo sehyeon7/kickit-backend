@@ -15,11 +15,11 @@ from apps.notification.utils import handle_comment_notification, handle_like_not
 from django.core.files.uploadedfile import InMemoryUploadedFile
 from .supabase_utils import upload_image_to_supabase, delete_image_from_supabase
 
-from .models import Board, Post, Comment, PostLike, CommentLike
+from .models import Board, Post, Comment, PostLike, CommentLike, SearchHistory
 from apps.settings_app.models import UserSetting
 from .pagination import PostCursorPagination
 from .serializers import (
-    BoardSerializer, PostSerializer, CommentSerializer, PostCreateUpdateSerializer, PostImageSerializer
+    BoardSerializer, PostSerializer, CommentSerializer, PostCreateUpdateSerializer, PostImageSerializer, SearchHistorySerializer
 )
 
 from apps.notification.utils import send_notification
@@ -435,3 +435,25 @@ class HideCommentView(generics.GenericAPIView):
             # 숨김 처리
             comment.hidden_by.add(user)
             return Response({"detail": "해당 댓글이 숨김 처리되었습니다."}, status=status.HTTP_200_OK)
+
+class SearchHistoryListCreateView(generics.ListCreateAPIView):
+    serializer_class = SearchHistorySerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return SearchHistory.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        keyword = self.request.data.get('keyword', '').strip()
+        if keyword:
+            # 기존에 같은 검색어가 있으면 삭제하고 새로 저장 (최신순 유지)
+            SearchHistory.objects.filter(user=self.request.user, keyword=keyword).delete()
+            serializer.save(user=self.request.user, keyword=keyword)
+
+class SearchHistoryDeleteView(generics.DestroyAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+    queryset = SearchHistory.objects.all()
+    lookup_field = 'id'
+
+    def get_queryset(self):
+        return SearchHistory.objects.filter(user=self.request.user)
