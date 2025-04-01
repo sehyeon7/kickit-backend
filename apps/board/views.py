@@ -271,6 +271,8 @@ class CommentListCreateView(generics.ListCreateAPIView):
         post_id = kwargs.get('post_id')
         post = get_object_or_404(Post, id=post_id)
 
+        board = post.board
+
         parent_id = request.data.get("parent")
         parent_comment = None
 
@@ -289,9 +291,9 @@ class CommentListCreateView(generics.ListCreateAPIView):
         serializer.is_valid(raise_exception=True)
         comment = serializer.save(author=user, post=post, parent=parent_comment)
 
-        handle_comment_notification(comment, post, parent_comment)
+        handle_comment_notification(comment, post, board, parent_comment)
 
-        handle_mention_notification(comment, mention_usernames)
+        handle_mention_notification(board, comment, mention_usernames)
 
         return Response(serializer.data, status=status.HTTP_201_CREATED)
         
@@ -308,6 +310,8 @@ class CommentLikeToggleView(generics.GenericAPIView):
         if not user.is_authenticated:
             return Response({"error": "로그인이 필요합니다."}, status=status.HTTP_401_UNAUTHORIZED)
         comment = get_object_or_404(Comment, id=comment_id, post_id=post_id)
+        post = comment.post
+        board = post.board
     
         like_obj = comment.likes.filter(user=user).first()
         if like_obj:
@@ -318,7 +322,7 @@ class CommentLikeToggleView(generics.GenericAPIView):
             CommentLike.objects.create(comment=comment, user=user)
             is_liked = True
 
-            handle_like_notification(user, comment, is_post=False)
+            handle_like_notification(user, board, comment, is_post=False)
         
         # 업데이트된 좋아요 개수
         like_count = comment.likes.count()
@@ -366,6 +370,7 @@ class PostLikeToggleView(generics.GenericAPIView):
         if not user.is_authenticated:
             return Response({"error": "로그인이 필요합니다."}, status=status.HTTP_401_UNAUTHORIZED)
         post = get_object_or_404(Post, id=post_id)
+        board = post.board
         like_obj = post.likes.filter(user=user).first()
         if like_obj:
             # 이미 좋아요 => 취소
@@ -375,7 +380,7 @@ class PostLikeToggleView(generics.GenericAPIView):
             PostLike.objects.create(post=post, user=user)
             is_liked = True
             
-            handle_like_notification(user, post, is_post=True)
+            handle_like_notification(user, board, post, is_post=True)
 
         # 업데이트된 좋아요 개수
         like_count = post.likes.count()

@@ -56,7 +56,7 @@ def get_fcm_access_token():
     credentials.refresh(Request())  # 토큰 갱신
     return credentials.token
 
-def send_notification(user, title, message, post_id=None, comment_id=None):
+def send_notification(user, title, message, board_id=None, post_id=None, comment_id=None):
     """
     user의 알림 설정(UserSetting)을 확인해, In-app 알림 / Push 알림을 보낸다.
     """
@@ -65,6 +65,7 @@ def send_notification(user, title, message, post_id=None, comment_id=None):
         user=user,
         title=title,
         message=message,
+        board_id=board_id,
         post_id=post_id,
         comment_id=comment_id,
     )
@@ -76,9 +77,9 @@ def send_notification(user, title, message, post_id=None, comment_id=None):
 
     if user_setting.notification_type == NotificationType.PUSH_IN_APP:
         # 실제로는 FCM, APNs, SMS 등 Push 로직 필요
-        send_fcm_push_notification(user, title, message, post_id=post_id, comment_id=comment_id)
+        send_fcm_push_notification(user, title, message, board_id=board_id, post_id=post_id, comment_id=comment_id)
 
-def handle_comment_notification(comment, post, parent_comment):
+def handle_comment_notification(comment, post, board, parent_comment):
     """
     - 댓글/대댓글 알림을 처리
     - 부모 댓글이 있으면 대댓글, 없으면 게시글의 댓글로 간주
@@ -93,6 +94,7 @@ def handle_comment_notification(comment, post, parent_comment):
                 user=parent_comment_author,
                 title="새로운 대댓글이 달렸습니다!",
                 message=f"{comment_author.profile.nickname}: {comment.content}",
+                board_id=board.id,
                 post_id=post.id,
                 comment_id=comment.id
             )
@@ -104,11 +106,12 @@ def handle_comment_notification(comment, post, parent_comment):
                 user=post_author,
                 title="새로운 댓글이 달렸습니다!",
                 message=f"{comment_author.profile.nickname}: {comment.content}",
+                board_id=board.id,
                 post_id=post.id,
                 comment_id=comment.id
             )
 
-def handle_like_notification(user, post_or_comment, is_post=True):
+def handle_like_notification(user, board, post_or_comment, is_post=True):
     """
     - 글 좋아요: 게시글 작성자에게 알림
     - 댓글 좋아요: 댓글 작성자에게 알림
@@ -121,17 +124,19 @@ def handle_like_notification(user, post_or_comment, is_post=True):
     if is_post:
         title = "당신의 글이 좋아요를 받았습니다!"
         message = f"'{post_or_comment.content}'"
+        board_id = board.id
         post_id = post_or_comment.id 
         comment_id = None
     else:
         title = "당신의 댓글이 좋아요를 받았습니다!"
         message = f"'{post_or_comment.content}'"
+        board_id = board.id
         post_id = post_or_comment.post.id  
         comment_id = post_or_comment.id
 
-    send_notification(target_author, title, message, post_id=post_id, comment_id=comment_id)
+    send_notification(target_author, title, message, board_id=board_id, post_id=post_id, comment_id=comment_id)
 
-def handle_mention_notification(comment, mention_usernames):
+def handle_mention_notification(board, comment, mention_usernames):
     """
     - 멘션된 사용자에게 알림 전송
     - 존재하지 않는 닉네임은 무시
@@ -146,13 +151,14 @@ def handle_mention_notification(comment, mention_usernames):
                     user=mentioned_user,
                     title=f"'{comment_author.profile.nickname}'님이 당신을 댓글에서 언급했습니다.",
                     message=f"{comment.content}",
+                    board_id = board.id,
                     post_id=comment.post.id,
                     comment_id=comment.id
                 )
         except User.DoesNotExist:
             continue  # 존재하지 않는 유저는 무시
 
-def send_fcm_push_notification(user, title, message, post_id=None, comment_id=None):
+def send_fcm_push_notification(user, title, message, board_id=None, post_id=None, comment_id=None):
     """
     특정 유저에게 FCM Push 알림을 전송하는 함수
     """
@@ -176,6 +182,7 @@ def send_fcm_push_notification(user, title, message, post_id=None, comment_id=No
                 "body": message
             },
             "data": {
+                "board_id": str(board_id) if board_id else "",
                 "post_id": str(post_id) if post_id else "",
                 "comment_id": str(comment_id) if comment_id else "",
                 "click_action": "FLUTTER_NOTIFICATION_CLICK"

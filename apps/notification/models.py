@@ -13,6 +13,7 @@ class Notification(models.Model):
     is_read = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
+    board_id = models.IntegerField(null=True, blank=True)
     post_id = models.IntegerField(null=True, blank=True)
     comment_id = models.IntegerField(null=True, blank=True)
 
