@@ -453,8 +453,14 @@ class PasswordResetRequestView(APIView):
         try:
             # 이메일로 비밀번호 재설정 링크 전송
             send_mail(
-                subject="비밀번호 재설정 요청",
-                message=f"비밀번호를 재설정하려면 아래 링크를 클릭하세요:\n{reset_link}",
+                subject="Password Reset Request",
+                message=(
+                    "You requested to reset your Squibble password.\n\n"
+                    "Please tap the link below on your phone to proceed:\n"
+                    f"{reset_link}\n\n"
+                    "⚠️ This link is intended for use on mobile devices only.\n"
+                    "If you didn't request this, you can safely ignore this email."
+                ),
                 from_email="no-reply@squibble.mobi",
                 recipient_list=[email],
                 fail_silently=False,

@@ -92,7 +92,7 @@ def handle_comment_notification(comment, post, board, parent_comment):
         if user_setting and user_setting.notification_categories.filter(name="Commented").exists():
             send_notification(
                 user=parent_comment_author,
-                title="새로운 대댓글이 달렸습니다!",
+                title="New reply to your comment!",
                 message=f"{comment_author.profile.nickname}: {comment.content}",
                 board_id=board.id,
                 post_id=post.id,
@@ -104,7 +104,7 @@ def handle_comment_notification(comment, post, board, parent_comment):
         if user_setting and user_setting.notification_categories.filter(name="Commented").exists():
             send_notification(
                 user=post_author,
-                title="새로운 댓글이 달렸습니다!",
+                title="New comment on your post!",
                 message=f"{comment_author.profile.nickname}: {comment.content}",
                 board_id=board.id,
                 post_id=post.id,
@@ -122,13 +122,13 @@ def handle_like_notification(user, board, post_or_comment, is_post=True):
         return
 
     if is_post:
-        title = "당신의 글이 좋아요를 받았습니다!"
+        title = "Someone liked your post!"
         message = f"'{post_or_comment.content}'"
         board_id = board.id
         post_id = post_or_comment.id 
         comment_id = None
     else:
-        title = "당신의 댓글이 좋아요를 받았습니다!"
+        title = "Someone liked your comment!"
         message = f"'{post_or_comment.content}'"
         board_id = board.id
         post_id = post_or_comment.post.id  
@@ -149,8 +149,8 @@ def handle_mention_notification(board, comment, mention_usernames):
             if user_setting and user_setting.notification_categories.filter(name="Mentioned").exists():
                 send_notification(
                     user=mentioned_user,
-                    title=f"'{comment_author.profile.nickname}'님이 당신을 댓글에서 언급했습니다.",
-                    message=f"{comment.content}",
+                    title="You were mentioned in a comment",
+                    message=f"{comment_author.profile.nickname} mentioned you: {comment.content}",
                     board_id = board.id,
                     post_id=comment.post.id,
                     comment_id=comment.id
@@ -213,12 +213,12 @@ def send_verification_notification(user, success=True):
     """
     유저 인증 성공/실패 시 In-app, Push, Email 알림 전송
     """
-    title = "KickIt 회원 인증 결과"
+    title = "Squibble Account Verification"
     
     if success:
-        message = f"{user.username}님, 회원 인증이 승인되었습니다! 🎉 이제 앱의 모든 기능을 이용할 수 있습니다."
+        message = f"{user.username}, your account has been successfully verified! 🎉 You now have access to all features."
     else:
-        message = f"{user.username}님, 회원 인증이 거절되었습니다. 다시 인증 사진을 업로드해 주세요."
+        message = f"{user.username}, your account verification has been denied. Please re-upload your verification image."
 
     # ✅ In-app 알림 저장
     try:
@@ -255,13 +255,14 @@ def send_verification_failure_email(user):
     """
     유저 인증 실패 시 이메일 전송
     """
-    subject = "회원가입 인증 실패 안내"
+    subject = "Squibble Account Verification Failed"
     message = (
-        f"안녕하세요, {user.profile.nickname}님.\n\n"
-        "회원가입 인증 요청이 거절되었습니다. \n"
-        "문의 사항이 있으면 고객센터로 문의 부탁드립니다.\n"
-        "- 운영진 드림"
+        f"Hello {user.profile.nickname},\n\n"
+        "Unfortunately, your verification request has been denied.\n"
+        "If you have any questions, please contact our support team.\n"
+        "- Squibble Team"
     )
+
 
     send_mail(
         subject=subject,
