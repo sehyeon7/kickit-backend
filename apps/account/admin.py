@@ -18,8 +18,11 @@ class UserProfileAdmin(admin.ModelAdmin):
 
     def verification_image_preview(self, obj):
         """ 인증 이미지 미리보기 (작은 썸네일) """
-        if obj.verification_image:
-            return format_html('<img src="{}" width="50" height="50" style="border-radius:5px;" />', obj.verification_image)
+        if obj.verification_image and isinstance(obj.verification_image, list) and len(obj.verification_image) > 0:
+            return format_html(
+                '<img src="{}" width="50" height="50" style="border-radius:5px;" />',
+                obj.verification_image[0]  # ✅ 첫 번째 이미지
+            )
         return "이미지 없음"
 
     verification_image_preview.short_description = "인증 이미지"

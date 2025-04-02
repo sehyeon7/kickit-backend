@@ -5,7 +5,7 @@ from django.contrib.auth.models import User
 from apps.settings_app.models import UserSetting
 import requests
 from fcm_django.models import FCMDevice
-from firebase_admin.messaging import Message, Notification, send
+from firebase_admin.messaging import Message, Notification as FirebaseNotification, send
 from google.auth.transport.requests import Request
 from google.oauth2 import service_account
 import requests
