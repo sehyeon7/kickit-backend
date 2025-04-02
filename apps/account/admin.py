@@ -1,7 +1,10 @@
 from django.contrib import admin
 from django.utils.html import format_html
+from django.urls import reverse, path
+from django.shortcuts import get_object_or_404, redirect
+from django.http import HttpResponseRedirect
+from django.contrib import messages
 from django.core.mail import send_mail
-from django.urls import reverse
 from django.utils.safestring import mark_safe
 from django.contrib import messages
 from .models import UserProfile
@@ -38,48 +41,37 @@ class UserProfileAdmin(admin.ModelAdmin):
         return format_html('<a class="button" href="{}" style="color:red;">✖ 거절</a>', url)
 
     deny_button.short_description = "인증 거절"
+# ✅ 인증 승인 뷰
+def confirm_verification(request, user_id):
+    user_profile = get_object_or_404(UserProfile, id=user_id)
+    user_profile.is_verified = True
+    user_profile.save()
+
+    # 알림 전송
+    send_verification_notification(user_profile.user, success=True)
+
+    messages.success(request, f"{user_profile.user.username} 님의 인증을 승인했습니다.")
+    return HttpResponseRedirect(request.META.get('HTTP_REFERER', '/admin/'))
 
 
-# 커스텀 Admin URL 추가
-from django.urls import path
-from django.shortcuts import redirect, get_object_or_404
-from django.http import HttpResponseRedirect
-from django.contrib.auth.models import User
+# ✅ 인증 거절 뷰
+def deny_verification(request, user_id):
+    user_profile = get_object_or_404(UserProfile, id=user_id)
 
-class UserVerificationAdmin(admin.AdminSite):
-    site_header = "유저 인증 관리"
+    # 알림 전송
+    send_verification_failure_email(user_profile.user)
 
-    def get_urls(self):
-        urls = super().get_urls()
-        custom_urls = [
-            path('confirm/<int:user_id>/', self.confirm_verification, name="confirm_verification"),
-            path('deny/<int:user_id>/', self.deny_verification, name="deny_verification"),
-        ]
-        return custom_urls + urls
+    messages.error(request, f"{user_profile.user.username} 님의 인증을 거절했습니다.")
+    return HttpResponseRedirect(request.META.get('HTTP_REFERER', '/admin/'))
 
-    def confirm_verification(self, request, user_id):
-        """ 유저 인증 승인 (is_verified=True) """
-        user_profile = get_object_or_404(UserProfile, id=user_id)
-        user_profile.is_verified = True
-        user_profile.save()
+original_get_urls = admin.site.get_urls
 
-        # ✅ In-app, Push, Email 알림 전송
-        send_verification_notification(user_profile.user, success=True)
+# ✅ 커스텀 URL 추가
+def get_admin_urls():
+    custom_urls = [
+        path('account/userprofile/confirm/<int:user_id>/', admin.site.admin_view(confirm_verification), name='confirm_verification'),
+        path('account/userprofile/deny/<int:user_id>/', admin.site.admin_view(deny_verification), name='deny_verification'),
+    ]
+    return custom_urls + original_get_urls()
 
-        messages.success(request, f"{user_profile.user.username} 님의 인증을 승인했습니다.")
-        return HttpResponseRedirect(request.META.get('HTTP_REFERER', '/admin/'))
-
-    def deny_verification(self, request, user_id):
-        """ 유저 인증 거절 (is_verified=False 유지) """
-        user_profile = get_object_or_404(UserProfile, id=user_id)
-
-        # ✅ Email로 재인증 요청 알림 전송
-        send_verification_failure_email(user_profile, success=False)
-
-        messages.error(request, f"{user_profile.user.username} 님의 인증을 거절했습니다.")
-        return HttpResponseRedirect(request.META.get('HTTP_REFERER', '/admin/'))
-
-
-# Admin 사이트에 인증 관리 탭 추가
-admin_site = UserVerificationAdmin(name='user_verification')
-admin.site = admin_site
+admin.site.get_urls = get_admin_urls
