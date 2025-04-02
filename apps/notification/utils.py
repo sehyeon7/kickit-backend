@@ -221,23 +221,35 @@ def send_verification_notification(user, success=True):
         message = f"{user.username}님, 회원 인증이 거절되었습니다. 다시 인증 사진을 업로드해 주세요."
 
     # ✅ In-app 알림 저장
-    Notification.objects.create(
-        user=user,
-        title=title,
-        message=message
-    )
+    try:
+        Notification.objects.create(
+            user=user,
+            title=title,
+            message=message
+        )
+    except Exception as e:
+        print("[ERROR] In-app 알림 생성 실패:", e)
 
     # ✅ Push 알림 전송 (유저의 FCM 기기 등록 여부 확인)
-    send_fcm_push_notification(user, title, message)
+    try:
+        send_fcm_push_notification(user, title, message)
+    except Exception as e:
+        print("[ERROR] 푸시 알림 실패:", e)
 
     # ✅ Email 알림 전송
-    send_mail(
-        subject=title,
-        message=message,
-        from_email="no-reply@kickit.com",
-        recipient_list=[user.email],
-        fail_silently=False,
-    )
+    try:
+        send_mail(
+            subject=title,
+            message=message,
+            from_email="no-reply@squibble.mobi",
+            recipient_list=[user.email],
+            fail_silently=False,  # 여전히 raise 하도록
+        )
+    except ConnectionRefusedError:
+        print("[ERROR] 메일 서버에 연결할 수 없습니다. 이메일 전송 실패")
+    except Exception as e:
+        print("[ERROR] 이메일 전송 실패:", e)
+
 
 def send_verification_failure_email(user):
     """
@@ -254,7 +266,7 @@ def send_verification_failure_email(user):
     send_mail(
         subject=subject,
         message=message,
-        from_email="no-reply@kickit.com",
+        from_email="no-reply@squibble.mobi",
         recipient_list=[user.email],
         fail_silently=False,
     )
