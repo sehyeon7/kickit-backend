@@ -50,10 +50,11 @@ def confirm_verification(request, user_id):
     user_profile.is_verified = True
     user_profile.save()
 
-    # 알림 전송
-    send_verification_notification(user_profile.user, success=True)
-
-    messages.success(request, f"{user_profile.user.username} 님의 인증을 승인했습니다.")
+    try:
+        send_verification_notification(user_profile.user, success=True)
+        messages.success(request, f"{user_profile.user.username} 님의 인증을 승인했습니다.")
+    except Exception as e:
+        messages.error(request, f"{user_profile.user.username} 님의 인증은 승인되었으나, 알림 전송에 실패했습니다: {e}")
     return HttpResponseRedirect(request.META.get('HTTP_REFERER', '/admin/'))
 
 
