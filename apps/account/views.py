@@ -455,7 +455,7 @@ class PasswordResetRequestView(APIView):
             send_mail(
                 subject="비밀번호 재설정 요청",
                 message=f"비밀번호를 재설정하려면 아래 링크를 클릭하세요:\n{reset_link}",
-                from_email="no-reply@example.com",
+                from_email="no-reply@squibble.mobi",
                 recipient_list=[email],
                 fail_silently=False,
             )
