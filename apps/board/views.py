@@ -9,6 +9,7 @@ from django.db.models import Q
 from rest_framework.exceptions import ValidationError, PermissionDenied
 from datetime import timedelta
 from django.utils.timezone import now
+from rest_framework.views import APIView
 from django.db.models import Count
 
 from apps.notification.utils import handle_comment_notification, handle_like_notification, handle_mention_notification
@@ -465,3 +466,18 @@ class SearchHistoryDeleteView(generics.DestroyAPIView):
 
     def get_queryset(self):
         return SearchHistory.objects.filter(user=self.request.user)
+
+class SearchHistoryClearView(APIView):
+    """
+    로그인한 유저의 전체 검색 기록 삭제
+    DELETE /search-history/clear/
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def delete(self, request):
+        user = request.user
+        deleted_count, _ = SearchHistory.objects.filter(user=user).delete()
+        return Response(
+            {"detail": f"{deleted_count}개의 검색 기록이 삭제되었습니다."},
+            status=status.HTTP_200_OK
+        )

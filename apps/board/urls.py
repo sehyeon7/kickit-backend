@@ -7,7 +7,7 @@ from .views import (
     CommentListCreateView,
     CommentLikeToggleView,
     PostLikeToggleView, ScrapToggleView, CommentDeleteView, HideCommentView, PopularPostView,
-    PostUpdateView, PostDeleteView, SearchHistoryListView, SearchHistoryDeleteView
+    PostUpdateView, PostDeleteView, SearchHistoryListView, SearchHistoryDeleteView, SearchHistoryClearView
 )
 
 urlpatterns = [
@@ -55,4 +55,5 @@ urlpatterns = [
     # 검색기록 조회/삭제
     path('search/', SearchHistoryListView.as_view(), name='search-history-list-create'),
     path('search/<int:id>/', SearchHistoryDeleteView.as_view(), name='search-history-delete'),
+    path('search/clear/', SearchHistoryClearView.as_view()),
 ]
