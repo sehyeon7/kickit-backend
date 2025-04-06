@@ -7,7 +7,7 @@ from .views import (
     CommentListCreateView,
     CommentLikeToggleView,
     PostLikeToggleView, ScrapToggleView, CommentDeleteView, HideCommentView, PopularPostView,
-    PostUpdateView, PostDeleteView, SearchHistoryListCreateView, SearchHistoryDeleteView
+    PostUpdateView, PostDeleteView, SearchHistoryListView, SearchHistoryDeleteView
 )
 
 urlpatterns = [
@@ -53,6 +53,6 @@ urlpatterns = [
     path('<int:board_id>/posts/popular/', PopularPostView.as_view(), name='post-popular'),
 
     # 검색기록 조회/삭제
-    path('search/', SearchHistoryListCreateView.as_view(), name='search-history-list-create'),
+    path('search/', SearchHistoryListView.as_view(), name='search-history-list-create'),
     path('search/<int:id>/', SearchHistoryDeleteView.as_view(), name='search-history-delete'),
 ]
