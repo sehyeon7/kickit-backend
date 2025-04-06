@@ -51,9 +51,9 @@ def upload_image_to_supabase(django_file):
         )
         # result 예) {'Key': 'post-images/uuid.jpg', ...} 업로드 성공 여부는 result.error로 확인 가능
 
-        if result.get('error'):
-            print("Supabase upload error:", result['error'])
-            return None
+        # if result.get('error'):
+        #     print("Supabase upload error:", result['error'])
+        #     return None
 
         # public URL 생성 (Public Bucket 이거나, signed URL 발급)
         # Public Bucket 사용 시:
@@ -79,9 +79,9 @@ def delete_image_from_supabase(image_url):
         # 파일 삭제 요청
         result = supabase.storage.from_(supabase_bucket).remove([file_name])
 
-        if result.get('error'):
-            print(f"Supabase delete error: {result['error']}")
-            return False  # 삭제 실패
+        # if result.get('error'):
+        #     print(f"Supabase delete error: {result['error']}")
+        #     return False  # 삭제 실패
 
         return True  # 삭제 성공
 
