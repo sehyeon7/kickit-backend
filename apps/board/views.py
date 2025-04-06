@@ -81,19 +81,25 @@ class PostListView(generics.ListAPIView):
 
     def get_queryset(self):
         user = self.request.user
-        search = self.request.query_params.get('search', '')
+        search = self.request.query_params.get('search', '').strip()
 
         queryset = Post.objects.all().order_by('-created_at')
+
         if search:
             queryset = queryset.filter(
                 Q(content__icontains=search)
             )
 
-        # 로그인 유저라면, 숨긴 글 제외
+            # 로그인 유저의 검색어 기록 저장
+            if user.is_authenticated and search:
+                from .models import SearchHistory 
+                # 동일 키워드가 있다면 삭제 후 재삽입 (최신순 유지를 위해)
+                SearchHistory.objects.filter(user=user, keyword=search).delete()
+                SearchHistory.objects.create(user=user, keyword=search)
+
+        # 로그인 유저라면 숨긴 글 / 차단 유저 필터링
         if user.is_authenticated:
             queryset = queryset.exclude(hidden_by=user)
-
-            # 차단한 유저의 글도 필터링
             blocked_users = user.profile.blocked_users.all()
             queryset = queryset.exclude(author__in=blocked_users)
 
