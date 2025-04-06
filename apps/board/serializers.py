@@ -2,7 +2,7 @@ from rest_framework import serializers
 from django.shortcuts import get_object_or_404
 from django.contrib.auth.models import User
 from .models import Board, Post, Comment, PostLike, LikeType, PostImage, CommentLike, SearchHistory
-
+from django.core.files.uploadedfile import InMemoryUploadedFile
 class BoardSerializer(serializers.ModelSerializer):
     class Meta:
         model = Board
@@ -133,6 +133,10 @@ class PostCreateUpdateSerializer(serializers.ModelSerializer):
         """
         content = data.get("content", "").strip()
         images = data.get("images", [])
+        
+        if isinstance(images, InMemoryUploadedFile):
+            images = [images]
+            data["images"] = images
 
         if not content and not images:
             raise serializers.ValidationError("게시글 내용 또는 이미지를 최소 하나 이상 포함해야 합니다.")
@@ -142,6 +146,9 @@ class PostCreateUpdateSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         board_id = validated_data.pop('board_id')
         images = validated_data.pop('images', [])
+
+        if isinstance(images, InMemoryUploadedFile):
+            images = [images]
 
         board = get_object_or_404(Board, id=board_id)
 
