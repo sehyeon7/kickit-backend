@@ -104,15 +104,10 @@ class PostCreateUpdateSerializer(serializers.ModelSerializer):
     - images 필드를 write_only로 구성 (multipart/form-data로 파일 전송)
     """
     board_id = serializers.IntegerField(write_only=True)
-    images = serializers.ListField(
-        child=serializers.ImageField(allow_empty_file=False),
-        write_only=True,
-        required=False
-    )
 
     class Meta:
         model = Post
-        fields = ['board_id', 'content', 'images']
+        fields = ['board_id', 'content']  # 'images'는 정의 안함
 
     def validate_board_id(self, value):
         if not Board.objects.filter(id=value).exists():
@@ -121,26 +116,72 @@ class PostCreateUpdateSerializer(serializers.ModelSerializer):
 
     def validate(self, data):
         content = data.get("content", "").strip()
-        images = data.get("images", [])
+        files = self.context['request'].FILES.getlist("images")
 
-        if not content and not images:
+        if not content and not files:
             raise serializers.ValidationError("게시글 내용 또는 이미지를 최소 하나 이상 포함해야 합니다.")
         return data
 
     def create(self, validated_data):
         board_id = validated_data.pop('board_id')
-        images = validated_data.pop('images', [])
         board = get_object_or_404(Board, id=board_id)
         user = self.context['request'].user
 
+        # 이미지 수집
+        images = self.context['request'].FILES.getlist("images")
         from .supabase_utils import upload_image_to_supabase
+
         image_urls = []
         for image_file in images:
             image_url = upload_image_to_supabase(image_file)
             if image_url:
                 image_urls.append(image_url)
 
-        return Post.objects.create(board=board, author=user, images=image_urls, **validated_data)
+        # 저장
+        return Post.objects.create(
+            board=board,
+            author=user,
+            images=image_urls,
+            **validated_data
+        )
+    # board_id = serializers.IntegerField(write_only=True)
+    # images = serializers.ListField(
+    #     child=serializers.ImageField(allow_empty_file=False),
+    #     write_only=True,
+    #     required=False
+    # )
+
+    # class Meta:
+    #     model = Post
+    #     fields = ['board_id', 'content', 'images']
+
+    # def validate_board_id(self, value):
+    #     if not Board.objects.filter(id=value).exists():
+    #         raise serializers.ValidationError("존재하지 않는 board_id 입니다.")
+    #     return value
+
+    # def validate(self, data):
+    #     content = data.get("content", "").strip()
+    #     images = data.get("images", [])
+
+    #     if not content and not images:
+    #         raise serializers.ValidationError("게시글 내용 또는 이미지를 최소 하나 이상 포함해야 합니다.")
+    #     return data
+
+    # def create(self, validated_data):
+    #     board_id = validated_data.pop('board_id')
+    #     images = validated_data.pop('images', [])
+    #     board = get_object_or_404(Board, id=board_id)
+    #     user = self.context['request'].user
+
+    #     from .supabase_utils import upload_image_to_supabase
+    #     image_urls = []
+    #     for image_file in images:
+    #         image_url = upload_image_to_supabase(image_file)
+    #         if image_url:
+    #             image_urls.append(image_url)
+
+    #     return Post.objects.create(board=board, author=user, images=image_urls, **validated_data)
     # board_id = serializers.IntegerField(write_only=True) # board_id 필수 입력
     # images = serializers.ListField(
     #     child=serializers.ImageField(allow_empty_file=False),
