@@ -129,6 +129,8 @@ class PostCreateUpdateSerializer(serializers.ModelSerializer):
         return data
 
     def create(self, validated_data):
+        request = self.context.get('request')
+        user = request.user
         board_id = validated_data.pop('board_id')
         board = get_object_or_404(Board, id=board_id)
         user = self.context['request'].user

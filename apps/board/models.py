@@ -33,7 +33,7 @@ class Post(models.Model):
     hidden_by = models.ManyToManyField(User, related_name='hidden_posts', blank=True)
 
     def __str__(self):
-        return self.title
+        return f"Post({self.id}) by {self.author.username}: {self.content[:20]}"
     
     def save(self, *args, **kwargs):
         if not self.author_nickname:  # 새 게시글 작성 시, 닉네임 자동 설정
