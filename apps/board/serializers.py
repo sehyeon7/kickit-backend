@@ -134,8 +134,11 @@ class PostCreateUpdateSerializer(serializers.ModelSerializer):
         image_urls = []
         for image_file in images:
             image_url = upload_image_to_supabase(image_file)
+            print("[DEBUG] Image upload result:", image_url)
             if image_url:
                 image_urls.append(image_url)
+
+        print("[DEBUG] Uploaded image URLs:", image_urls)
 
         # 저장
         return Post.objects.create(
