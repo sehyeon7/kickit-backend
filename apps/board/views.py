@@ -19,7 +19,7 @@ from .models import Board, Post, Comment, PostLike, CommentLike, SearchHistory
 from apps.settings_app.models import UserSetting
 from .pagination import PostCursorPagination
 from .serializers import (
-    BoardSerializer, PostSerializer, CommentSerializer, PostCreateUpdateSerializer, PostImageSerializer, SearchHistorySerializer
+    BoardSerializer, PostSerializer, CommentSerializer, PostCreateUpdateSerializer, SearchHistorySerializer
 )
 
 from apps.notification.utils import send_notification

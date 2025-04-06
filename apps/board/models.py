@@ -28,6 +28,7 @@ class Post(models.Model):
     author = models.ForeignKey(User, on_delete=models.CASCADE)
     author_nickname = models.CharField(max_length=50, blank=True)
     content = models.TextField()
+    images = models.JSONField(default=list, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     scrapped_by = models.ManyToManyField(User, related_name='scrapped_posts', blank=True)
     hidden_by = models.ManyToManyField(User, related_name='hidden_posts', blank=True)
@@ -108,17 +109,6 @@ class CommentLike(models.Model):
     def __str__(self):
         return f"{self.user.username} LIKE comment {self.comment.id}"
 
-class PostImage(models.Model):
-    """
-    게시글에 첨부된 이미지.
-    Supabase Storage에 업로드된 뒤, 반환된 public URL을 저장.
-    """
-    post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name='images')
-    image_url = models.URLField(max_length=500)  # Supabase에서 받아온 public URL
-    uploaded_at = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return f"Image for post {self.post.id}"
     
 class SearchHistory(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='search_histories')

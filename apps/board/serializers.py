@@ -1,17 +1,12 @@
 from rest_framework import serializers
 from django.shortcuts import get_object_or_404
 from django.contrib.auth.models import User
-from .models import Board, Post, Comment, PostLike, LikeType, PostImage, CommentLike, SearchHistory
+from .models import Board, Post, Comment, PostLike, LikeType, CommentLike, SearchHistory
 from django.core.files.uploadedfile import InMemoryUploadedFile
 class BoardSerializer(serializers.ModelSerializer):
     class Meta:
         model = Board
         fields = ['id', 'name', 'description']
-
-class PostImageSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = PostImage
-        fields = ['id', 'image_url', 'uploaded_at']
 
 class CommentSerializer(serializers.ModelSerializer):
     """
@@ -76,7 +71,7 @@ class PostSerializer(serializers.ModelSerializer):
     
     def get_content_images(self, obj):
         """ 게시글에 첨부된 이미지 반환 (없을 경우 빈 배열) """
-        return [image.image_url for image in obj.images.all()] if obj.images.exists() else []
+        return obj.images if obj.images else []
     
     def get_like_count(self, obj):
         return obj.likes.count()
@@ -109,11 +104,15 @@ class PostCreateUpdateSerializer(serializers.ModelSerializer):
     - images 필드를 write_only로 구성 (multipart/form-data로 파일 전송)
     """
     board_id = serializers.IntegerField(write_only=True)
-    # images 필드 제거 (ListField → 직접 request.FILES에서 처리)
+    images = serializers.ListField(
+        child=serializers.ImageField(allow_empty_file=False),
+        write_only=True,
+        required=False
+    )
 
     class Meta:
         model = Post
-        fields = ['board_id', 'content']  # 'images' 제거
+        fields = ['board_id', 'content', 'images']
 
     def validate_board_id(self, value):
         if not Board.objects.filter(id=value).exists():
@@ -122,30 +121,26 @@ class PostCreateUpdateSerializer(serializers.ModelSerializer):
 
     def validate(self, data):
         content = data.get("content", "").strip()
-        files = self.context['request'].FILES.getlist("images")
+        images = data.get("images", [])
 
-        if not content and not files:
+        if not content and not images:
             raise serializers.ValidationError("게시글 내용 또는 이미지를 최소 하나 이상 포함해야 합니다.")
         return data
 
     def create(self, validated_data):
-        request = self.context.get('request')
-        user = request.user
         board_id = validated_data.pop('board_id')
+        images = validated_data.pop('images', [])
         board = get_object_or_404(Board, id=board_id)
         user = self.context['request'].user
 
-        post = Post.objects.create(board=board, author=user, **validated_data)
-
-        # images 처리
-        images = self.context['request'].FILES.getlist("images")
         from .supabase_utils import upload_image_to_supabase
+        image_urls = []
         for image_file in images:
             image_url = upload_image_to_supabase(image_file)
             if image_url:
-                PostImage.objects.create(post=post, image_url=image_url)
+                image_urls.append(image_url)
 
-        return post
+        return Post.objects.create(board=board, author=user, images=image_urls, **validated_data)
     # board_id = serializers.IntegerField(write_only=True) # board_id 필수 입력
     # images = serializers.ListField(
     #     child=serializers.ImageField(allow_empty_file=False),
