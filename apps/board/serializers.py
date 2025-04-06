@@ -58,6 +58,7 @@ class PostSerializer(serializers.ModelSerializer):
     board_name = serializers.ReadOnlyField(source='board.name')
     like_count = serializers.SerializerMethodField()
     comment_count = serializers.SerializerMethodField()
+    comments = serializers.SerializerMethodField()
     is_liked = serializers.SerializerMethodField()
     content_images = serializers.SerializerMethodField()
 
@@ -66,7 +67,7 @@ class PostSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'board_id', 'board_name',
             'author', 'created_at', 'content',
-            'content_images', 'like_count', 'comment_count', 'is_liked'
+            'content_images', 'like_count', 'comment_count', 'is_liked', 'comments'
         ]
     
     def get_content_images(self, obj):
@@ -88,6 +89,18 @@ class PostSerializer(serializers.ModelSerializer):
     def get_comment_count(self, obj):
         """ 댓글 개수 반환 """
         return obj.comments.count()
+    
+    def get_comments(self, obj):
+        request = self.context.get('request')
+        user = request.user if request and request.user.is_authenticated else None
+
+        # 최상위 댓글만 가져오고 필터링
+        comments_qs = obj.comments.filter(parent__isnull=True).order_by('-created_at')
+        if user:
+            blocked_users = user.profile.blocked_users.all()
+            comments_qs = comments_qs.exclude(author__in=blocked_users).exclude(hidden_by=user)
+
+        return CommentSerializer(comments_qs, many=True, context=self.context).data
     
     def get_is_liked(self, obj):
         """ 현재 유저가 좋아요를 눌렀는지 반환 """
