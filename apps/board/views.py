@@ -131,11 +131,19 @@ class PostListCreateView(generics.ListCreateAPIView):
             queryset = queryset.exclude(author__in=blocked_users)
         return queryset
     
-    def perform_create(self, serializer):
-        """
-        게시글 생성 시 board_id와 작성자를 자동으로 추가
-        """
-        serializer.save()
+    # def perform_create(self, serializer):
+    #     """
+    #     게시글 생성 시 board_id와 작성자를 자동으로 추가
+    #     """
+    #     serializer.save()
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+
+        post = serializer.instance
+        read_serializer = PostSerializer(post, context=self.get_serializer_context())
+        return Response(read_serializer.data, status=status.HTTP_201_CREATED)
 
 class PostDetailView(generics.RetrieveAPIView):
     """
