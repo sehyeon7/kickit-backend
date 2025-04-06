@@ -135,7 +135,7 @@ class PostListCreateView(generics.ListCreateAPIView):
         """
         게시글 생성 시 board_id와 작성자를 자동으로 추가
         """
-        serializer.save()
+        serializer.save(request=self.request)
 
 class PostDetailView(generics.RetrieveAPIView):
     """

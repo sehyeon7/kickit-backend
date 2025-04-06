@@ -108,66 +108,102 @@ class PostCreateUpdateSerializer(serializers.ModelSerializer):
     게시글 생성 시, 여러 이미지를 같이 업로드하도록
     - images 필드를 write_only로 구성 (multipart/form-data로 파일 전송)
     """
-    board_id = serializers.IntegerField(write_only=True) # board_id 필수 입력
-    images = serializers.ListField(
-        child=serializers.ImageField(allow_empty_file=False),
-        write_only=True,
-        required=False
-    )
+    board_id = serializers.IntegerField(write_only=True)
+    # images 필드 제거 (ListField → 직접 request.FILES에서 처리)
 
     class Meta:
         model = Post
-        fields = ['board_id', 'content', 'images']
-    
+        fields = ['board_id', 'content']  # 'images' 제거
+
     def validate_board_id(self, value):
-        """
-        존재하는 `board_id`인지 확인
-        """
         if not Board.objects.filter(id=value).exists():
             raise serializers.ValidationError("존재하지 않는 board_id 입니다.")
         return value
-    
-    def validate(self, data):
-        """
-        `content`와 `images` 둘 다 비어있으면 에러 반환
-        """
-        content = data.get("content", "").strip()
-        images = data.get("images", [])
-        
-        if isinstance(images, InMemoryUploadedFile):
-            images = [images]
-            data["images"] = images
 
-        if not content and not images:
+    def validate(self, data):
+        content = data.get("content", "").strip()
+        files = self.context['request'].FILES.getlist("images")
+
+        if not content and not files:
             raise serializers.ValidationError("게시글 내용 또는 이미지를 최소 하나 이상 포함해야 합니다.")
-        
         return data
 
     def create(self, validated_data):
         board_id = validated_data.pop('board_id')
-        images = validated_data.pop('images', [])
-
-        if isinstance(images, InMemoryUploadedFile):
-            images = [images]
-
         board = get_object_or_404(Board, id=board_id)
-
         user = self.context['request'].user
 
         post = Post.objects.create(board=board, author=user, **validated_data)
 
-        # Supabase Storage 업로드 후, PostImage 생성
-        request = self.context.get('request')
-        if images and request:
-            try:
-                from .supabase_utils import upload_image_to_supabase
-                for image_file in images:
-                    image_url = upload_image_to_supabase(image_file)
-                    if image_url:
-                        PostImage.objects.create(post=post, image_url=image_url)
-            except Exception as e:
-                raise serializers.ValidationError({"images": ["이미지 업로드 중 오류가 발생했습니다."]})
+        # images 처리
+        images = self.context['request'].FILES.getlist("images")
+        from .supabase_utils import upload_image_to_supabase
+        for image_file in images:
+            image_url = upload_image_to_supabase(image_file)
+            if image_url:
+                PostImage.objects.create(post=post, image_url=image_url)
+
         return post
+    # board_id = serializers.IntegerField(write_only=True) # board_id 필수 입력
+    # images = serializers.ListField(
+    #     child=serializers.ImageField(allow_empty_file=False),
+    #     write_only=True,
+    #     required=False
+    # )
+
+    # class Meta:
+    #     model = Post
+    #     fields = ['board_id', 'content', 'images']
+    
+    # def validate_board_id(self, value):
+    #     """
+    #     존재하는 `board_id`인지 확인
+    #     """
+    #     if not Board.objects.filter(id=value).exists():
+    #         raise serializers.ValidationError("존재하지 않는 board_id 입니다.")
+    #     return value
+    
+    # def validate(self, data):
+    #     """
+    #     `content`와 `images` 둘 다 비어있으면 에러 반환
+    #     """
+    #     content = data.get("content", "").strip()
+    #     images = data.get("images", [])
+        
+    #     if isinstance(images, InMemoryUploadedFile):
+    #         images = [images]
+    #         data["images"] = images
+
+    #     if not content and not images:
+    #         raise serializers.ValidationError("게시글 내용 또는 이미지를 최소 하나 이상 포함해야 합니다.")
+        
+    #     return data
+
+    # def create(self, validated_data):
+    #     board_id = validated_data.pop('board_id')
+    #     images = validated_data.pop('images', [])
+
+    #     if isinstance(images, InMemoryUploadedFile):
+    #         images = [images]
+
+    #     board = get_object_or_404(Board, id=board_id)
+
+    #     user = self.context['request'].user
+
+    #     post = Post.objects.create(board=board, author=user, **validated_data)
+
+    #     # Supabase Storage 업로드 후, PostImage 생성
+    #     request = self.context.get('request')
+    #     if images and request:
+    #         try:
+    #             from .supabase_utils import upload_image_to_supabase
+    #             for image_file in images:
+    #                 image_url = upload_image_to_supabase(image_file)
+    #                 if image_url:
+    #                     PostImage.objects.create(post=post, image_url=image_url)
+    #         except Exception as e:
+    #             raise serializers.ValidationError({"images": ["이미지 업로드 중 오류가 발생했습니다."]})
+    #     return post
 
 class SearchHistorySerializer(serializers.ModelSerializer):
     class Meta:
