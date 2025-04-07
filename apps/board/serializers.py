@@ -45,7 +45,9 @@ class CommentSerializer(serializers.ModelSerializer):
     
     def get_is_liked(self, obj):
         user = self.context.get('request').user
-        return obj.likes.filter(id=user.id).exists() if user.is_authenticated else False
+        if not user or not user.is_authenticated:
+            return False
+        return obj.likes.filter(user=user).exists()
     
     def get_replies(self, obj):
         if obj.replies.exists():
