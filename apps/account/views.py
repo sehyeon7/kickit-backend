@@ -32,6 +32,7 @@ from rest_framework.parsers import MultiPartParser
 FRONTEND_HOST = os.getenv('FRONTEND_HOST')
 
 from .models import UserProfile, School, Department, AdmissionYear
+from apps.settings_app.models import NotificationType, UserSetting
 from .serializers import (
     UserSignupSerializer, GoogleAuthCheckSerializer, LoginSerializer, UserProfileSerializer,
     SchoolSerializer, DepartmentSerializer, GoogleLoginSerializer,
@@ -223,7 +224,10 @@ class UserSignupView(APIView):
 
         user.refresh_from_db()
         print(f"User refreshed: {user.id}, {user.email}")
-        
+
+        default_type = NotificationType.objects.filter(id=1).first()
+        UserSetting.objects.create(user=user, notification_type=default_type)
+
         return set_token_on_response_cookie(user, status_code=status.HTTP_201_CREATED)
 
 class LoginView(APIView):
