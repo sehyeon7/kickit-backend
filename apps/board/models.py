@@ -43,11 +43,7 @@ class Post(models.Model):
 
     @property
     def like_count(self):
-        return self.likes.filter(like_type=LikeType.LIKE).count()
-
-    @property
-    def dislike_count(self):
-        return self.likes.filter(like_type=LikeType.DISLIKE).count()
+        return self.likes.count()
 
 
 class LikeType(models.TextChoices):
