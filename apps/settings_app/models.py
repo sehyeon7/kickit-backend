@@ -8,6 +8,7 @@ class NotificationType(models.Model):
     알림 타입 모델
     - In_app: 앱 내 알림만 허용
     - Push & In_app: 푸시 및 앱 내 알림 허용
+    - Push : 푸시 알림만 허용
     """
     name = models.CharField(max_length=50, unique=True)
 
@@ -33,11 +34,11 @@ class UserSetting(models.Model):
     - 비밀번호 변경: User model 내장 메서드
     - 회원탈퇴: User.is_active=False or 삭제
     - 알림 설정:
-    - notification_type: 알림 타입 (In_app, Push & In_app)
+    - notification_type: 알림 타입 (In_app, Push & In_app, Push)
     - notification_categories: 사용자가 활성화한 알림 카테고리
     """
     user = models.OneToOneField(User, on_delete=models.CASCADE)
-    notification_type = models.ForeignKey(NotificationType, on_delete=models.SET_NULL, null=True, blank=True)
+    notification_type = models.ForeignKey(NotificationType, on_delete=models.SET_NULL, null=True, blank=True, default=1)
     notification_categories = models.ManyToManyField(NotificationCategory, blank=True)
 
     def __str__(self):
