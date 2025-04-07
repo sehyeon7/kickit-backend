@@ -335,21 +335,10 @@ class CommentLikeToggleView(generics.GenericAPIView):
             is_liked = False
         else:
             CommentLike.objects.create(comment=comment, user=user)
-            is_liked = True
-
             handle_like_notification(user, board, comment, is_post=False)
-        
-        # 업데이트된 좋아요 개수
-        like_count = comment.likes.count()
 
-        return Response(
-            {
-                "detail": "좋아요 추가" if is_liked else "좋아요 취소",
-                "like_count": like_count,
-                "is_liked": is_liked
-            },
-            status=status.HTTP_200_OK
-        )
+        serializer = CommentSerializer(comment, context={"request": request})
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 class CommentDeleteView(generics.DestroyAPIView):
     """
