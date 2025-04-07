@@ -71,11 +71,11 @@ def send_notification(user, title, message, board_id=None, post_id=None, comment
     )
     # 2) user.setting.notification_type 확인
     user_setting = UserSetting.objects.filter(user=user).first()
-    if not user_setting or user_setting.notification_type == NotificationType.IN_APP:
+    if not user_setting or user_setting.notification_type.name=="IN_APP":
         # 설정이 없는 경우 -> In-app만
         return
 
-    if user_setting.notification_type == NotificationType.PUSH_IN_APP:
+    if user_setting.notification_type.name=="PUSH_IN_APP":
         # 실제로는 FCM, APNs, SMS 등 Push 로직 필요
         send_fcm_push_notification(user, title, message, board_id=board_id, post_id=post_id, comment_id=comment_id)
 
