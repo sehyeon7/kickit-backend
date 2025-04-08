@@ -65,7 +65,7 @@ class PopularPostView(generics.RetrieveAPIView):
             )
 
         if not recent_popular_post:
-            return Response({"error": "이 게시판에 게시글이 없습니다."}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"error": "There are no posts in this board."}, status=status.HTTP_404_NOT_FOUND)
 
         serializer = self.get_serializer(recent_popular_post, context={"request": request})
         return Response(serializer.data, status=status.HTTP_200_OK)
@@ -187,7 +187,7 @@ class PostUpdateView(generics.UpdateAPIView):
         post = self.get_object()
 
         if 'content' not in self.request.data:
-            raise ValidationError({"content": ["이 필드는 필수입니다."]})
+            raise ValidationError({"content": ["This field is required."]})
 
         # 기존 이미지 리스트 (URL) + 새로 추가된 이미지 (MultipartFile)
         existing_images = self.request.data.getlist('existing_images', [])  # 문자열 리스트
@@ -228,7 +228,7 @@ class PostDeleteView(generics.DestroyAPIView):
 
     def perform_destroy(self, instance):
         if instance.author != self.request.user:
-            raise PermissionDenied("본인이 작성한 글만 삭제할 수 있습니다.")
+            raise PermissionDenied("You can only delete your own posts.")
         instance.delete()
 
 class HidePostView(generics.GenericAPIView):
@@ -247,11 +247,11 @@ class HidePostView(generics.GenericAPIView):
         if user in post.hidden_by.all():
             # 이미 숨김 중 => 숨김 해제
             post.hidden_by.remove(user)
-            return Response({"detail": "해당 글 숨김 해제"}, status=status.HTTP_200_OK)
+            return Response({"detail": "The post is now unhidden."}, status=status.HTTP_200_OK)
         else:
             # 숨김
             post.hidden_by.add(user)
-            return Response({"detail": "해당 글 숨김 처리"}, status=status.HTTP_200_OK)
+            return Response({"detail": "The post has been hidden."}, status=status.HTTP_200_OK)
 
 class CommentListCreateView(generics.ListCreateAPIView):
     """
@@ -281,7 +281,7 @@ class CommentListCreateView(generics.ListCreateAPIView):
         """ 댓글 작성 시 예외 처리를 추가하여 상세한 에러 메시지 반환 """
         user = request.user
         if not user.is_authenticated:
-            return Response({"error": "로그인이 필요합니다."}, status=status.HTTP_401_UNAUTHORIZED)
+            return Response({"error": "Login is required."}, status=status.HTTP_401_UNAUTHORIZED)
 
         post_id = kwargs.get('post_id')
         post = get_object_or_404(Post, id=post_id)
@@ -295,12 +295,12 @@ class CommentListCreateView(generics.ListCreateAPIView):
         if parent_id:
             parent_comment = Comment.objects.filter(id=parent_id, post=post).first()
             if not parent_comment:
-                return Response({"error": "부모 댓글을 찾을 수 없습니다."}, status=status.HTTP_404_NOT_FOUND)
+                return Response({"error": "Parent comment not found."}, status=status.HTTP_404_NOT_FOUND)
 
         # Mentions 데이터 검증
         mention_usernames = request.data.get("mentions", [])
         if mention_usernames and not isinstance(mention_usernames, list):
-            return Response({"error": "mentions 필드는 리스트 형식이어야 합니다."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "The 'mentions' field must be a list."}, status=status.HTTP_400_BAD_REQUEST)
 
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -323,7 +323,7 @@ class CommentLikeToggleView(generics.GenericAPIView):
     def post(self, request, board_id, post_id, comment_id):
         user = request.user
         if not user.is_authenticated:
-            return Response({"error": "로그인이 필요합니다."}, status=status.HTTP_401_UNAUTHORIZED)
+            return Response({"error": "Login is required."}, status=status.HTTP_401_UNAUTHORIZED)
         comment = get_object_or_404(Comment, id=comment_id, post_id=post_id)
         post = comment.post
         board = post.board
@@ -353,14 +353,14 @@ class CommentDeleteView(generics.DestroyAPIView):
 
         # 대댓글이 있는 경우 삭제 불가 (추가된 로직)
         if comment.replies.exists():
-            return Response({"error": "대댓글이 있는 댓글은 삭제할 수 없습니다."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "You cannot delete a comment that has replies."}, status=status.HTTP_400_BAD_REQUEST)
 
         # 본인 댓글이거나 관리자인 경우 삭제 가능
         if comment.author != user and not user.is_staff:
-            return Response({"error": "댓글을 삭제할 권한이 없습니다."}, status=status.HTTP_403_FORBIDDEN)
+            return Response({"error": "You do not have permission to delete this comment."}, status=status.HTTP_403_FORBIDDEN)
 
         comment.delete()
-        return Response({"detail": "댓글이 삭제되었습니다."}, status=status.HTTP_204_NO_CONTENT)
+        return Response({"detail": "The comment has been deleted."}, status=status.HTTP_204_NO_CONTENT)
 
 class PostLikeToggleView(generics.GenericAPIView):
     """
@@ -372,7 +372,7 @@ class PostLikeToggleView(generics.GenericAPIView):
     def post(self, request, board_id, post_id):
         user = request.user
         if not user.is_authenticated:
-            return Response({"error": "로그인이 필요합니다."}, status=status.HTTP_401_UNAUTHORIZED)
+            return Response({"error": "Login is required."}, status=status.HTTP_401_UNAUTHORIZED)
         post = get_object_or_404(Post, id=post_id)
         board = post.board
         like_obj = post.likes.filter(user=user).first()
@@ -390,7 +390,7 @@ class PostLikeToggleView(generics.GenericAPIView):
         like_count = post.likes.count()
         return Response(
             {
-                "detail": "좋아요 추가" if is_liked else "좋아요 취소",
+                "detail": "Liked" if is_liked else "Like removed",
                 "like_count": like_count,
                 "is_liked": is_liked
             },
@@ -413,11 +413,11 @@ class ScrapToggleView(generics.GenericAPIView):
         if user in post.scrapped_by.all():
             # 이미 스크랩 되어 있으면 스크랩 해제
             post.scrapped_by.remove(user)
-            return Response({"detail": "스크랩 해제"}, status=status.HTTP_200_OK)
+            return Response({"detail": "Scrap removed."}, status=status.HTTP_200_OK)
         else:
             # 스크랩 추가
             post.scrapped_by.add(user)
-            return Response({"detail": "스크랩 추가"}, status=status.HTTP_200_OK)
+            return Response({"detail": "Post scrapped."}, status=status.HTTP_200_OK)
         
 class HideCommentView(generics.GenericAPIView):
     """
@@ -434,11 +434,11 @@ class HideCommentView(generics.GenericAPIView):
         if user in comment.hidden_by.all():
             # 이미 숨김 처리된 경우 → 숨김 해제
             comment.hidden_by.remove(user)
-            return Response({"detail": "해당 댓글의 숨김이 해제되었습니다."}, status=status.HTTP_200_OK)
+            return Response({"detail": "The comment is now visible."}, status=status.HTTP_200_OK)
         else:
             # 숨김 처리
             comment.hidden_by.add(user)
-            return Response({"detail": "해당 댓글이 숨김 처리되었습니다."}, status=status.HTTP_200_OK)
+            return Response({"detail": "The comment has been hidden."}, status=status.HTTP_200_OK)
 
 class SearchHistoryListView(generics.ListAPIView):
     serializer_class = SearchHistorySerializer
@@ -467,6 +467,6 @@ class SearchHistoryClearView(APIView):
         user = request.user
         deleted_count, _ = SearchHistory.objects.filter(user=user).delete()
         return Response(
-            {"detail": f"{deleted_count}개의 검색 기록이 삭제되었습니다."},
+            {"detail": f"{deleted_count} search history items deleted."},
             status=status.HTTP_200_OK
         )
