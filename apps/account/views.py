@@ -25,7 +25,7 @@ from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode
 from django.core.mail import send_mail
 from rest_framework_simplejwt.tokens import RefreshToken, AccessToken
-from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken
+from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken, OutstandingToken
 from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework.parsers import MultiPartParser
 
@@ -303,10 +303,14 @@ class LogoutView(APIView):
             return Response({"error": "No Refresh token"}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            token = RefreshToken(refresh_token)
-            token.blacklist()  # 블랙리스트에 등록
+            tokens = OutstandingToken.objects.filter(user=request.user)
 
-            response = Response({"detail": "You have been logged out."}, status=status.HTTP_200_OK)
+            for token in tokens:
+                # 각 토큰을 블랙리스트에 추가
+                RefreshToken(token.token).blacklist()
+
+
+            response = Response({"detail": "You have been logged out in all devices."}, status=status.HTTP_200_OK)
             response.delete_cookie("access_token")
             response.delete_cookie("refresh_token")
             return response
