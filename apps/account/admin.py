@@ -11,7 +11,7 @@ from django.utils.safestring import mark_safe
 
 @admin.register(UserProfile)
 class UserProfileAdmin(admin.ModelAdmin):
-    list_display = ('user_link', 'is_verified', 'verification_image_preview', 'confirm_button', 'deny_button')
+    list_display = ('user_link', 'is_verified', 'nickname', 'school', 'department', 'admission_year')
     list_filter = ('is_verified',)
     search_fields = ('user__username', 'school__name', 'department__name')
     change_form_template = 'admin/userprofile_change_form.html'  # ✅ custom template
@@ -25,28 +25,6 @@ class UserProfileAdmin(admin.ModelAdmin):
         return format_html('<a href="{}">{}</a>', url, obj.user.email)
     user_link.short_description = "USER"
 
-    def verification_image_preview(self, obj):
-        if obj.verification_image and isinstance(obj.verification_image, list) and len(obj.verification_image) > 0:
-            return format_html(
-                '<img src="{}" width="50" height="50" style="border-radius:5px;" />',
-                obj.verification_image[0]
-            )
-        return "이미지 없음"
-    verification_image_preview.short_description = "인증 이미지"
-
-    def confirm_button(self, obj):
-        if not obj.is_verified:
-            url = reverse('admin:confirm_verification', args=[obj.id])
-            return format_html('<a class="button" href="{}" style="color:green;">✔ 승인</a>', url)
-        return "승인됨"
-    confirm_button.short_description = "인증 승인"
-
-    def deny_button(self, obj):
-        if obj.is_verified:
-            return "이미 승인됨"
-        url = reverse('admin:deny_verification', args=[obj.id])
-        return format_html('<a class="button" href="{}" style="color:red;">✖ 거절</a>', url)
-    deny_button.short_description = "인증 거절"
 
     def display_verification_images(self, obj):
         if obj.verification_image and isinstance(obj.verification_image, list):
