@@ -17,7 +17,7 @@ def validate_image_extension(image):
     file_ext = image.name.split(".")[-1].lower()
     
     if file_ext not in valid_extensions:
-        raise ValidationError("지원되지 않는 파일 형식입니다. (jpg, jpeg, png만 허용)")
+        raise ValidationError("Unsupported file format. Only jpg, jpeg, and png are allowed.")
 
     return image
 
@@ -74,9 +74,9 @@ class NicknameUpdateSerializer(serializers.Serializer):
         max_length=20, 
         allow_blank=False,
         error_messages={
-            "min_length": "닉네임은 최소 3자 이상이어야 합니다.",
-            "max_length": "닉네임은 최대 20자 이하로 설정해주세요.",
-            "blank": "닉네임은 공백일 수 없습니다."
+            "min_length": "Nickname must be at least 3 characters long.",
+            "max_length": "Nickname must be no more than 20 characters.",
+            "blank": "Nickname cannot be blank."
         }
     )
 
@@ -86,13 +86,13 @@ class NicknameUpdateSerializer(serializers.Serializer):
         """
         request = self.context.get("request")  # 현재 요청 객체 가져오기
         if not request or not request.user:
-            raise serializers.ValidationError("요청 정보가 없습니다.")
+            raise serializers.ValidationError("Request information is missing.")
 
         user = request.user
 
         # 닉네임이 다른 사용자의 닉네임과 중복되는 경우 예외 처리
         if UserProfile.objects.filter(nickname=value).exclude(user=user).exists():
-            raise serializers.ValidationError("이미 존재하는 닉네임입니다.")
+            raise serializers.ValidationError("This nickname is already taken.")
         
         return value
 
@@ -103,7 +103,7 @@ class EmailUpdateSerializer(serializers.Serializer):
     email = serializers.CharField(
         required=True,
         error_messages={
-            "blank": "이메일은 필수 입력 항목입니다.",
+            "blank": "Email is a required field.",
         }
     )
 
@@ -114,11 +114,11 @@ class EmailUpdateSerializer(serializers.Serializer):
         try:
             validate_email(value)  # 이메일 형식 검증
         except ValidationError:
-            raise serializers.ValidationError("유효한 이메일 주소를 입력해주세요.")
+            raise serializers.ValidationError("Please enter a valid email address.")
 
         # 이미 존재하는 이메일인지 확인 (자기 자신 제외)
         if User.objects.filter(email=value).exclude(id=self.context["request"].user.id).exists():
-            raise serializers.ValidationError("이미 사용 중인 이메일입니다.")
+            raise serializers.ValidationError("This email is already in use.")
 
         return value
 

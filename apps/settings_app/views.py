@@ -50,22 +50,22 @@ class UserSettingDetailView(generics.RetrieveUpdateAPIView):
         if "notification_type" in data:
             notification_type_ids = data.get("notification_type", [])
             if not isinstance(notification_type_ids, list):
-                return Response({"error": "notification_type은 단일 ID를 가진 배열이어야 합니다."}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({"error": "notification_type must be an array containing a single ID."}, status=status.HTTP_400_BAD_REQUEST)
 
             valid_types = NotificationType.objects.filter(id__in=notification_type_ids)
             if len(valid_types) != len(notification_type_ids):
-                return Response({"error": "유효하지 않은 notification_type ID가 포함되어 있습니다."}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({"error": "Some notification_type IDs are invalid."}, status=status.HTTP_400_BAD_REQUEST)
             user_setting.notification_type.set(valid_types)
 
         # notification_categories 업데이트
         if "notification_categories" in data:
             category_ids = data.get("notification_categories", [])
             if not isinstance(category_ids, list):
-                return Response({"error": "notification_categories는 ID 배열이어야 합니다."}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({"error": "notification_categories must be an array of IDs."}, status=status.HTTP_400_BAD_REQUEST)
 
             valid_categories = NotificationCategory.objects.filter(id__in=category_ids)
             if len(valid_categories) != len(category_ids):
-                return Response({"error": "유효하지 않은 notification_categories ID가 포함되어 있습니다."}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({"error": "Some notification_categories IDs are invalid."}, status=status.HTTP_400_BAD_REQUEST)
 
             user_setting.notification_categories.set(valid_categories)
 
@@ -124,7 +124,7 @@ class NicknameUpdateView(views.APIView):
         )
 
 
-        return Response({"detail": f"닉네임이 {nickname} 으로 변경되었습니다."}, status=status.HTTP_200_OK)
+        return Response({"detail": f"Nickname has been changed to {nickname}."}, status=status.HTTP_200_OK)
 
 class EmailUpdateView(views.APIView):
     """
@@ -142,11 +142,11 @@ class EmailUpdateView(views.APIView):
             request.user.save()
         except Exception as e:
             return Response(
-                {"error": "이메일 변경 중 문제가 발생했습니다. 관리자에게 문의하세요."},
+                {"error": "An error occurred while changing the email. Please contact the administrator."},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
-        return Response({"detail": f"이메일이 {email} 으로 변경되었습니다."}, status=status.HTTP_200_OK)
+        return Response({"detail": f"Email has been changed to {email}."}, status=status.HTTP_200_OK)
 
 
 class PasswordChangeView(views.APIView):
@@ -164,10 +164,10 @@ class PasswordChangeView(views.APIView):
 
         user = request.user
         if not user.check_password(old_password):
-            return Response({"error": "기존 비밀번호가 틀립니다."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "The current password is incorrect."}, status=status.HTTP_400_BAD_REQUEST)
         
         if old_password == new_password:
-            return Response({"error": "새 비밀번호는 기존 비밀번호와 다르게 설정해야 합니다."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "The new password must be different from the current password."}, status=status.HTTP_400_BAD_REQUEST)
         
         try:
             user.set_password(new_password)
@@ -175,7 +175,7 @@ class PasswordChangeView(views.APIView):
 
             # JWT 기반에서는 기존 토큰을 폐기하고 새로 발급해야 함.
             refresh = RefreshToken.for_user(user)
-            response = Response({"detail": "비밀번호가 변경되었습니다."}, status=status.HTTP_200_OK)
+            response = Response({"detail": "Password has been changed successfully."}, status=status.HTTP_200_OK)
             response.set_cookie('access_token', value=str(refresh.access_token), httponly=True, secure=True, samesite='None')
             response.set_cookie('refresh_token', value=str(refresh), httponly=True, secure=True, samesite='None')
 
@@ -183,7 +183,7 @@ class PasswordChangeView(views.APIView):
 
         except Exception as e:
             return Response(
-                {"error": "비밀번호 변경 중 문제가 발생했습니다. 관리자에게 문의하세요."},
+                {"error": "An error occurred while changing the password. Please contact the administrator."},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 class ProfileImageUpdateView(views.APIView):
@@ -203,7 +203,7 @@ class ProfileImageUpdateView(views.APIView):
             # Supabase에 이미지 업로드
             uploaded_url = upload_image_to_supabase(serializer.validated_data['image'])
             if not uploaded_url:
-                raise Exception("Supabase 업로드 실패")
+                raise Exception("Supabase Upload Failure")
 
             # 기존 프로필 이미지 업데이트
             user_profile.profile_image = uploaded_url
@@ -212,7 +212,7 @@ class ProfileImageUpdateView(views.APIView):
             return Response({"profile_image": uploaded_url}, status=status.HTTP_200_OK)
         
         except Exception as e:
-            return Response({"error": "이미지 업로드에 실패했습니다."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({"error": "Failed to upload the image."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class UserDeactivateView(views.APIView):
@@ -230,7 +230,7 @@ class UserDeactivateView(views.APIView):
 
         # 비밀번호 검증
         if not user.check_password(password):
-            return Response({"error": "비밀번호가 올바르지 않습니다."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "The password is incorrect."}, status=status.HTTP_400_BAD_REQUEST)
 
         # 유저 비활성화 (DB에는 유지)
         user.is_active = False
@@ -239,12 +239,12 @@ class UserDeactivateView(views.APIView):
         # 닉네임을 "탈퇴한 사용자"로 변경
         profile = getattr(user, 'profile', None)
         if profile:
-            profile.nickname = "탈퇴한 사용자"
+            profile.nickname = "Deleted User"
             profile.save()
 
         # 게시글 & 댓글에서 닉네임을 "탈퇴한 사용자"로 변경
-        Post.objects.filter(author=user).update(author_nickname="탈퇴한 사용자")
-        Comment.objects.filter(author=user).update(author_nickname="탈퇴한 사용자")
+        Post.objects.filter(author=user).update(author_nickname="Deleted User")
+        Comment.objects.filter(author=user).update(author_nickname="Deleted User")
 
         # JWT 토큰 블랙리스트 처리 (로그아웃)
         try:
@@ -256,7 +256,7 @@ class UserDeactivateView(views.APIView):
             pass
 
         # 클라이언트 쿠키 삭제 (로그아웃 처리)
-        response = Response({"detail": "회원탈퇴되었습니다."}, status=status.HTTP_200_OK)
+        response = Response({"detail": "Your account has been deactivated."}, status=status.HTTP_200_OK)
         response.delete_cookie("access_token")
         response.delete_cookie("refresh_token")
         
