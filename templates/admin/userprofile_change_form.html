@@ -1,11 +1,16 @@
 {% extends "admin/change_form.html" %}
 
-{% block after_related_objects %}
+{% block after_field_sets %}
   {{ block.super }}
+
   {% if show_verification_buttons %}
-    <div style="margin-top: 20px;">
-      <a class="button" href="{{ confirm_url }}" style="color: white; background: green; padding: 10px; margin-right: 10px;">✔ 인증 승인</a>
-      <a class="button" href="{{ deny_url }}" style="color: white; background: red; padding: 10px;">✖ 인증 거절</a>
+    <div style="margin-top: 30px;">
+      <a href="{{ confirm_url }}" class="button" style="background-color: green; color: white; padding: 10px 20px; margin-right: 10px; border-radius: 4px;">
+        ✔ 인증 승인
+      </a>
+      <a href="{{ deny_url }}" class="button" style="background-color: red; color: white; padding: 10px 20px; border-radius: 4px;">
+        ✖ 인증 거절
+      </a>
     </div>
   {% endif %}
 {% endblock %}

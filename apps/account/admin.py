@@ -66,11 +66,12 @@ class UserProfileAdmin(admin.ModelAdmin):
     def change_view(self, request, object_id, form_url='', extra_context=None):
         extra_context = extra_context or {}
         profile = get_object_or_404(UserProfile, pk=object_id)
+
         extra_context['show_verification_buttons'] = not profile.is_verified
         extra_context['confirm_url'] = reverse('admin:confirm_verification', args=[profile.id])
         extra_context['deny_url'] = reverse('admin:deny_verification', args=[profile.id])
-        return super().change_view(request, object_id, form_url, extra_context=extra_context)
 
+        return super().change_view(request, object_id, form_url, extra_context=extra_context)
     def confirm_verification(self, request, user_id):
         profile = get_object_or_404(UserProfile, id=user_id)
         profile.is_verified = True
