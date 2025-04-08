@@ -85,7 +85,7 @@ class GoogleLoginSerializer(serializers.Serializer):
     def validate(self, data):
         id_token = data.get('id_token')
         if not id_token:
-            raise serializers.ValidationError("Google ID Token이 필요합니다.")
+            raise serializers.ValidationError("Google ID Token is needed.")
         return data
 
 class GoogleAuthCheckSerializer(serializers.Serializer):
@@ -112,9 +112,9 @@ class NicknameCheckSerializer(serializers.Serializer):
         max_length=20, 
         allow_blank=False,
         error_messages={
-            "min_length": "닉네임은 최소 3자 이상이어야 합니다.",
-            "max_length": "닉네임은 최대 20자 이하로 설정해주세요.",
-            "blank": "닉네임은 공백일 수 없습니다."
+            "min_length": "Nickname must be at least 3 characters long.",
+            "max_length": "Nickname must be no more than 20 characters.",
+            "blank": "Nickname cannot be blank."
         }
     )
 
@@ -132,7 +132,7 @@ class PasswordResetRequestSerializer(serializers.Serializer):
 
     def validate_email(self, value):
         if not User.objects.filter(email=value).exists():
-            raise serializers.ValidationError("해당 이메일의 계정이 존재하지 않습니다.")
+            raise serializers.ValidationError("No account exists with the provided email.")
         return value
 
 class PasswordResetRequestSerializer(serializers.Serializer):
@@ -143,7 +143,7 @@ class PasswordResetRequestSerializer(serializers.Serializer):
 
     def validate_email(self, value):
         if not User.objects.filter(email=value).exists():
-            raise serializers.ValidationError("해당 이메일의 계정이 존재하지 않습니다.")
+            raise serializers.ValidationError("No account exists with the provided email.")
         return value
 
 class PasswordResetSerializer(serializers.Serializer):
@@ -156,11 +156,11 @@ class PasswordResetSerializer(serializers.Serializer):
 
     def validate_new_password(self, value):
         if len(value) < 8:
-            raise serializers.ValidationError("비밀번호는 최소 8자 이상이어야 합니다.")
+            raise serializers.ValidationError("Password must be at least 8 characters long.")
         if not any(char.isdigit() for char in value):
-            raise serializers.ValidationError("비밀번호에는 숫자가 포함되어야 합니다.")
+            raise serializers.ValidationError("Password must include at least one number.")
         if not any(char.isalpha() for char in value):
-            raise serializers.ValidationError("비밀번호에는 영문자가 포함되어야 합니다.")
+            raise serializers.ValidationError("Password must include at least one letter.")
         return value
 
 class BlockedUserSerializer(serializers.ModelSerializer):
