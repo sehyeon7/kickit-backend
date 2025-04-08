@@ -23,7 +23,9 @@ class Department(models.Model):
         unique_together = ('school', 'name')
 
     def __str__(self):
-        return f"{self.school.name} - {self.name}"
+        if self.school:
+            return f"{self.school.name} - {self.name}"
+        return self.name 
 
 class AdmissionYear(models.Model):
     """
