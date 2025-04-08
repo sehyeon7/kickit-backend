@@ -49,16 +49,13 @@ class UserSettingDetailView(generics.RetrieveUpdateAPIView):
         # notification_type 업데이트
         if "notification_type" in data:
             notification_type_ids = data.get("notification_type", [])
-            if not isinstance(notification_type_ids, list) or len(notification_type_ids) > 1:
+            if not isinstance(notification_type_ids, list):
                 return Response({"error": "notification_type은 단일 ID를 가진 배열이어야 합니다."}, status=status.HTTP_400_BAD_REQUEST)
 
-            if notification_type_ids:
-                try:
-                    user_setting.notification_type = NotificationType.objects.get(id=notification_type_ids[0])
-                except NotificationType.DoesNotExist:
-                    return Response({"error": "유효하지 않은 notification_type ID입니다."}, status=status.HTTP_400_BAD_REQUEST)
-            else:
-                user_setting.notification_type = None  # 선택된 타입이 없을 경우 초기화
+            valid_types = NotificationType.objects.filter(id__in=notification_type_ids)
+            if len(valid_types) != len(notification_type_ids):
+                return Response({"error": "유효하지 않은 notification_type ID가 포함되어 있습니다."}, status=status.HTTP_400_BAD_REQUEST)
+            user_setting.notification_type.set(valid_types)
 
         # notification_categories 업데이트
         if "notification_categories" in data:

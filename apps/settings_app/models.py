@@ -38,7 +38,7 @@ class UserSetting(models.Model):
     - notification_categories: 사용자가 활성화한 알림 카테고리
     """
     user = models.OneToOneField(User, on_delete=models.CASCADE)
-    notification_type = models.ForeignKey(NotificationType, on_delete=models.SET_NULL, null=True, blank=True, default=1)
+    notification_type = models.ManyToManyField(NotificationType,blank=True)
     notification_categories = models.ManyToManyField(NotificationCategory, blank=True)
 
     def __str__(self):

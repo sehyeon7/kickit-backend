@@ -61,6 +61,16 @@ def send_notification(user, title, message, board_id=None, post_id=None, comment
     user의 알림 설정(UserSetting)을 확인해, In-app 알림 / Push 알림을 보낸다.
     """
     user_setting = UserSetting.objects.filter(user=user).first()
+    
+    # 기본값: 둘 다 보냄
+    send_fcm_push_notification(
+        user=user,
+        title=title,
+        message=message,
+        board_id=board_id,
+        post_id=post_id,
+        comment_id=comment_id
+    )
 
     # 1) In-app 알림 생성
     Notification.objects.create(
@@ -71,20 +81,6 @@ def send_notification(user, title, message, board_id=None, post_id=None, comment
         post_id=post_id,
         comment_id=comment_id,
     )
-
-    if not user_setting or not user_setting.notification_type:
-        return
-
-    notif_type = user_setting.notification_type.name
-    if notif_type == "PUSH" or notif_type == "PUSH_IN_APP":
-        send_fcm_push_notification(
-            user=user,
-            title=title,
-            message=message,
-            board_id=board_id,
-            post_id=post_id,
-            comment_id=comment_id
-        )
 
 def handle_comment_notification(comment, post, board, parent_comment):
     """
