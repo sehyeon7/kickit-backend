@@ -1,18 +1,24 @@
+from django.template.response import TemplateResponse
 from django.contrib import admin
+from django.urls import path, reverse
+from django.shortcuts import get_object_or_404, redirect
 from django.utils.html import format_html
-from django.urls import reverse, path
-from django.shortcuts import get_object_or_404, redirect, render
-from django.http import HttpResponseRedirect
 from django.contrib import messages
-from .models import UserProfile
+from django.contrib.auth.models import User
+from apps.account.models import UserProfile
 from apps.notification.utils import send_verification_notification, send_verification_failure_email
+from django.utils.safestring import mark_safe
 
 @admin.register(UserProfile)
 class UserProfileAdmin(admin.ModelAdmin):
     list_display = ('user_link', 'is_verified', 'verification_image_preview', 'confirm_button', 'deny_button')
     list_filter = ('is_verified',)
     search_fields = ('user__username', 'school__name', 'department__name')
-    readonly_fields = ('display_verification_images',)
+    change_form_template = 'admin/userprofile_change_form.html'  # ✅ custom template
+    readonly_fields = (
+        'user', 'school', 'department', 'admission_year', 'nickname',
+        'profile_image', 'is_verified', 'display_verification_images'
+    )
 
     def user_link(self, obj):
         url = reverse('admin:account_userprofile_change', args=[obj.id])
@@ -44,11 +50,10 @@ class UserProfileAdmin(admin.ModelAdmin):
 
     def display_verification_images(self, obj):
         if obj.verification_image and isinstance(obj.verification_image, list):
-            return format_html(''.join(
+            return mark_safe(''.join(
                 f'<img src="{img}" style="max-width:400px; margin:10px 0;" /><br/>' for img in obj.verification_image
             ))
         return "이미지 없음"
-    display_verification_images.short_description = "전체 인증 이미지"
 
     def get_urls(self):
         urls = super().get_urls()
@@ -57,6 +62,14 @@ class UserProfileAdmin(admin.ModelAdmin):
             path('deny/<int:user_id>/', self.admin_site.admin_view(self.deny_verification), name='deny_verification'),
         ]
         return custom_urls + urls
+
+    def change_view(self, request, object_id, form_url='', extra_context=None):
+        extra_context = extra_context or {}
+        profile = get_object_or_404(UserProfile, pk=object_id)
+        extra_context['show_verification_buttons'] = not profile.is_verified
+        extra_context['confirm_url'] = reverse('admin:confirm_verification', args=[profile.id])
+        extra_context['deny_url'] = reverse('admin:deny_verification', args=[profile.id])
+        return super().change_view(request, object_id, form_url, extra_context=extra_context)
 
     def confirm_verification(self, request, user_id):
         profile = get_object_or_404(UserProfile, id=user_id)
