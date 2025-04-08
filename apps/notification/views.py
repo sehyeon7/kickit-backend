@@ -39,7 +39,7 @@ class NotificationDetailView(generics.RetrieveUpdateAPIView):
 
         notification.is_read = True
         notification.save()
-        return Response({"detail": "알림이 읽음 처리되었습니다."}, status=status.HTTP_200_OK)
+        return Response({"detail": "The notification has been marked as read."}, status=status.HTTP_200_OK)
 
 class NotificationMarkAllReadView(APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -48,7 +48,7 @@ class NotificationMarkAllReadView(APIView):
         notifications = Notification.objects.filter(user=request.user, is_read=False)
 
         if not notifications.exists():
-            return Response({"detail": "읽지 않은 알림이 없습니다."}, status=status.HTTP_200_OK)
+            return Response({"detail": "There are no unread notifications."}, status=status.HTTP_200_OK)
         
         notifications.update(is_read=True)
-        return Response({"detail": "모든 알림이 읽음 처리되었습니다."})
+        return Response({"detail": "All notifications have been marked as read."})
