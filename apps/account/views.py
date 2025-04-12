@@ -469,7 +469,7 @@ class PasswordResetRequestView(APIView):
                     "⚠️ This link is intended for use on mobile devices only.\n"
                     "If you didn't request this, you can safely ignore this email."
                 ),
-                from_email="no-reply@squibble.mobi",
+                from_email="no-reply@squible.net",
                 recipient_list=[email],
                 fail_silently=False,
             )

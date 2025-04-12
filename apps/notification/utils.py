@@ -244,7 +244,7 @@ def send_verification_notification(user, success=True):
         send_mail(
             subject=title,
             message=message,
-            from_email="no-reply@squibble.mobi",
+            from_email="no-reply@squible.net",
             recipient_list=[user.email],
             fail_silently=False,  # 여전히 raise 하도록
         )
@@ -270,7 +270,7 @@ def send_verification_failure_email(user):
     send_mail(
         subject=subject,
         message=message,
-        from_email="no-reply@squibble.mobi",
+        from_email="no-reply@squible.net",
         recipient_list=[user.email],
         fail_silently=False,
     )
