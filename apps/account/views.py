@@ -226,7 +226,9 @@ class UserSignupView(APIView):
         print(f"User refreshed: {user.id}, {user.email}")
 
         default_type = NotificationType.objects.filter(id=1).first()
-        UserSetting.objects.create(user=user, notification_type=default_type)
+        user_setting = UserSetting.objects.create(user=user)
+        if default_type:
+            user_setting.notification_type.set([default_type])
 
         return set_token_on_response_cookie(user, status_code=status.HTTP_201_CREATED)
 
