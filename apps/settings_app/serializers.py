@@ -54,9 +54,7 @@ class UserSettingSerializer(serializers.ModelSerializer):
         """
         단일 notification_type을 배열로 감싸서 반환
         """
-        if obj.notification_type:
-            return [obj.notification_type.id]
-        return []
+        return list(obj.notification_type.values_list("id", flat=True))
 
     def get_notification_categories(self, obj):
         """
