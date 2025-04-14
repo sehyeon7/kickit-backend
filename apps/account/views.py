@@ -28,6 +28,7 @@ from rest_framework_simplejwt.tokens import RefreshToken, AccessToken
 from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken, OutstandingToken
 from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework.parsers import MultiPartParser
+from django.db import transaction
 
 FRONTEND_HOST = os.getenv('FRONTEND_HOST')
 
@@ -262,6 +263,12 @@ class LoginView(APIView):
             if not User.objects.filter(email=email).exists():
                 return Response({"error": "No account found with this email."}, status=400)
             return Response({"error": "Incorrect password."}, status=400)
+        
+        if not hasattr(user, "profile") or not user.profile.is_verified:
+            return Response(
+                {"error": "Your account has not been verified yet. Please complete the verification process."},
+                status=403
+            )
 
         return set_token_on_response_cookie(user)
 
@@ -525,10 +532,21 @@ class RegisterFCMTokenView(APIView):
         if not fcm_token or not isinstance(fcm_token, str) or len(fcm_token.strip()) == 0:
             return Response({"error": "A valid FCM token is required."}, status=status.HTTP_400_BAD_REQUEST)
 
-        # 기존 토큰이 있는 경우 업데이트
-        device, created = FCMDevice.objects.update_or_create(
-            user=user,
-            defaults={"registration_id": fcm_token, "type": device_type}
-        )
+        try:
+            with transaction.atomic():
+                # 동일한 registration_id 가진 기존 기기 삭제 (다른 유저 포함)
+                FCMDevice.objects.filter(registration_id=fcm_token).delete()
 
-        return Response({"detail": "FCM token has been registered."}, status=status.HTTP_200_OK)
+                # 현재 유저용 등록 or 업데이트
+                device, created = FCMDevice.objects.update_or_create(
+                    user=user,
+                    defaults={
+                        "registration_id": fcm_token,
+                        "type": device_type
+                    }
+                )
+
+            return Response({"detail": "FCM token has been registered."}, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({"error": f"Failed to register FCM token. {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
