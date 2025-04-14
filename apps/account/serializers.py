@@ -65,7 +65,7 @@ class UserSignupSerializer(serializers.Serializer):
     nickname = serializers.CharField(max_length=50)
     school = serializers.IntegerField()
     department = serializers.IntegerField()
-    admission_year = serializers.IntegerField()
+    admission_year = serializers.CharField()
     password = serializers.CharField(write_only=True, required=False)  # 일반 회원가입 용
     google_sub = serializers.CharField(write_only=True, required=False)  # 구글 로그인 용
     is_verified = serializers.BooleanField(default=False, read_only=True)
