@@ -66,22 +66,18 @@ REGION_NAME = "ap-northeast-2"
 
 import base64
 # Base64 인코딩된 Firebase 자격 증명 문자열을 환경 변수에서 읽어오기
-firebase_creds_b64 = os.getenv("FIREBASE_CREDENTIALS_B64")
+json_path = "/etc/secrets/firebase.json"
 
-if firebase_creds_b64:
+if os.path.exists(json_path):
     try:
-        # Base64 디코딩하여 JSON 문자열로 변환
-        json_str = base64.b64decode(firebase_creds_b64).decode('utf-8')
-        # JSON 문자열을 dict로 파싱
-        firebase_creds_dict = json.loads(json_str)
-        # Firebase 인증서 초기화
-        cred = credentials.Certificate(firebase_creds_dict)
+        # 경로에서 직접 JSON 파일을 로드하여 Firebase 초기화
+        cred = credentials.Certificate(json_path)
         firebase_admin.initialize_app(cred)
-        print("Firebase Admin 초기화 성공")
+        print("Firebase Admin 초기화 성공 (파일 기반)")
     except Exception as e:
-        print("Base64 자격 증명으로 Firebase Admin 초기화 실패:", e)
+        print("Firebase Admin 초기화 실패 (파일 기반):", e)
 else:
-    print("환경 변수 FIREBASE_CREDENTIALS_B64에 Firebase 자격 증명이 설정되어 있지 않습니다.")
+    print(f"Firebase 자격 증명 파일이 존재하지 않습니다: {json_path}")
 
 # def get_firebase_creds():
 #     session = boto3.session.Session()
