@@ -303,7 +303,7 @@ class LogoutView(APIView):
         # 인증되지 않은 사용자 접근 차단
         if not request.user.is_authenticated:
             return Response(
-                {"detail": "please signin"}, status=status.HTTP_401_UNAUTHORIZED
+                {"error": "please signin"}, status=status.HTTP_401_UNAUTHORIZED
             )
         
         # 요청 Body에서 refresh_token 확인 (쿠키에 없을 경우 대비)
