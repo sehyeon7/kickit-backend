@@ -50,9 +50,13 @@ class CommentSerializer(serializers.ModelSerializer):
         return obj.likes.filter(user=user).exists()
     
     def get_replies(self, obj):
-        if obj.replies.exists():
-            return CommentSerializer(obj.replies.all(), many=True, context=self.context).data
-        return []
+        user = self.context.get('request').user
+        qs = obj.replies.all()
+        if user and user.is_authenticated:
+            blocked = user.profile.blocked_users.all()
+            qs = qs.exclude(author__in=blocked)
+            qs = qs.exclude(hidden_by=user)
+        return CommentSerializer(qs, many=True, context=self.context).data
     
 
 class PostSerializer(serializers.ModelSerializer):
