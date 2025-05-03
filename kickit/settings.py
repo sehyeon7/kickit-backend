@@ -65,19 +65,33 @@ AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY')
 REGION_NAME = "ap-northeast-2" 
 
 import base64
-# Base64 인코딩된 Firebase 자격 증명 문자열을 환경 변수에서 읽어오기
-json_path = "/etc/secrets/firebase.json"
 
-if os.path.exists(json_path):
+AWS_REGION      = os.environ.get("AWS_REGION")
+FIREBASE_SECRET = os.environ.get("FIREBASE_SECRET_NAME")
+FIREBASE_PATH   = "/etc/secrets/firebase.json"
+
+def init_firebase():
+    # 1) 로컬에 파일이 있으면 먼저 시도
+    if os.path.exists(FIREBASE_PATH):
+        try:
+            cred = credentials.Certificate(FIREBASE_PATH)
+            initialize_app(cred)
+            print("Firebase initialized from file")
+            return
+        except Exception as e:
+            print("Firebase file init failed:", e)
+    # 2) 없거나 실패하면 Secrets Manager에서 가져오기
     try:
-        # 경로에서 직접 JSON 파일을 로드하여 Firebase 초기화
-        cred = credentials.Certificate(json_path)
-        firebase_admin.initialize_app(cred)
-        print("Firebase Admin 초기화 성공 (파일 기반)")
-    except Exception as e:
-        print("Firebase Admin 초기화 실패 (파일 기반):", e)
-else:
-    print(f"Firebase 자격 증명 파일이 존재하지 않습니다: {json_path}")
+        client = boto3.client("secretsmanager", region_name=AWS_REGION)
+        resp   = client.get_secret_value(SecretId=FIREBASE_SECRET)
+        secret_dict = json.loads(resp["SecretString"])
+        cred = credentials.Certificate(secret_dict)
+        initialize_app(cred)
+        print("Firebase initialized from Secrets Manager")
+    except ClientError as e:
+        print("Firebase secret init failed:", e)
+
+init_firebase()
 
 # def get_firebase_creds():
 #     session = boto3.session.Session()
@@ -273,7 +287,7 @@ FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024
 from datetime import timedelta 
 REST_USE_JWT = True 
 SIMPLE_JWT = {  'ACCESS_TOKEN_LIFETIME': timedelta(hours=2), 
-                'REFRESH_TOKEN_LIFETIME': timedelta(days=7), 
+                'REFRESH_TOKEN_LIFETIME': timedelta(days=30), 
                 'ROTATE_REFRESH_TOKENS': True, 
                 'BLACKLIST_AFTER_ROTATION': True, 
                 'SIGNING_KEY': SECRET_KEY,
@@ -289,6 +303,8 @@ SIMPLE_JWT = {  'ACCESS_TOKEN_LIFETIME': timedelta(hours=2),
                 'AUTH_COOKIE_HTTP_ONLY': True,
                 'AUTH_COOKIE_PATH': '/',
                 'AUTH_COOKIE_SAMESITE': 'None',
+                'ALGORITHM': 'HS256',
+                'SIGNING_KEY': SECRET_KEY,
             }
 
 AUTHENTICATION_BACKENDS = [
