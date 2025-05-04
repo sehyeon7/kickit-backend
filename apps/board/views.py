@@ -45,20 +45,32 @@ class PopularPostView(generics.RetrieveAPIView):
 
     def get(self, request, board_id):
         board = get_object_or_404(Board, id=board_id)
+        user = request.user
 
         # 10분 내의 인기 게시물 찾기
         ten_minutes_ago = now() - timedelta(minutes=10)
+        posts_qs = Post.objects.filter(board=board, created_at__gte=ten_minutes_ago)
+
+        if user.is_authenticated:
+            posts_qs = posts_qs.exclude(hidden_by=user)
+            posts_qs = posts_qs.exclude(author__in=user.profile.blocked_users.all())
+        
         recent_popular_post = (
-            Post.objects.filter(board=board, created_at__gte=ten_minutes_ago)
+            posts_qs
             .annotate(num_likes=Count("likes"))
-            .order_by("num_likes", "-created_at")
+            .order_by("-num_likes", "-created_at")
             .first()
         )
 
         # 10분 내 인기 게시물이 없으면, 이전 인기 게시물 유지
         if not recent_popular_post:
+            posts_qs = Post.objects.filter(board=board)
+            if user.is_authenticated:
+                posts_qs = posts_qs.exclude(hidden_by=user)
+                posts_qs = posts_qs.exclude(author__in=user.profile.blocked_users.all())
+
             recent_popular_post = (
-                Post.objects.filter(board=board)
+                posts_qs
                 .annotate(num_likes=Count("likes"))
                 .order_by("-num_likes", "-created_at")
                 .first()
