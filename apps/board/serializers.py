@@ -94,7 +94,16 @@ class PostSerializer(serializers.ModelSerializer):
     
     def get_comment_count(self, obj):
         """ 댓글 개수 반환 """
-        return obj.comments.count()
+        request = self.context.get('request')
+        user = request.user if request and request.user.is_authenticated else None
+
+        qs = obj.comments.all()
+
+        if user:
+            blocked_users = user.profile.blocked_users.all()
+            qs = qs.exclude(author__in=blocked_users).exclude(hidden_by=user)
+
+        return qs.count()
     
     def get_comments(self, obj):
         request = self.context.get('request')
