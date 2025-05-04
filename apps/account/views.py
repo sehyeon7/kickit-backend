@@ -31,7 +31,7 @@ from rest_framework.parsers import MultiPartParser
 from django.db import transaction
 from datetime import datetime, timezone
 from django.utils import timezone as dj_timezone
-from rest_framework_simplejwt.views import TokenRefreshView as SJTokenRefreshView
+from rest_framework_simplejwt.serializers import TokenRefreshSerializer
 
 FRONTEND_HOST = os.getenv('FRONTEND_HOST')
 
@@ -338,26 +338,39 @@ class TokenRefreshView(APIView):
     - 쿠키 만료(expires)를 토큰의 exp 클레임에 맞춰 슬라이딩 갱신.
     """
     def post(self, request, *args, **kwargs):
-        response = super().post(request, *args, **kwargs)
-        new_refresh = response.data.get('refresh')
-        new_access  = response.data.get('access')
+        serializer = TokenRefreshSerializer(data=request.data)
+
+        try:
+            serializer.is_valid(raise_exception=True)
+        except Exception:
+            return Response({"detail": "Invalid or expired refresh token"}, status=status.HTTP_401_UNAUTHORIZED)
+
+        new_access = serializer.validated_data['access']
+        new_refresh = serializer.validated_data.get('refresh')
+
+        response = Response({"message": "Token refreshed"}, status=status.HTTP_200_OK)
+
+        at = AccessToken(new_access)
+        access_exp = datetime.fromtimestamp(at['exp'], tz=dj_timezone.utc)
+        response.set_cookie(
+            key='access_token',
+            value=new_access,
+            expires=access_exp,
+            httponly=True,
+            secure=True,
+            samesite='None',
+        )
 
         if new_refresh:
             rt = RefreshToken(new_refresh)
-            expires = datetime.fromtimestamp(rt['exp'], tz=dj_timezone.utc)
+            refresh_exp = datetime.fromtimestamp(rt['exp'], tz=dj_timezone.utc)
             response.set_cookie(
-                'refresh_token', new_refresh,
-                expires=expires,
-                httponly=True, secure=True, samesite='None',
-            )
-
-        if new_access:
-            at = AccessToken(new_access)
-            expires = datetime.fromtimestamp(at['exp'], tz=dj_timezone.utc)
-            response.set_cookie(
-                'access_token', new_access,
-                expires=expires,
-                httponly=True, secure=True, samesite='None',
+                key='refresh_token',
+                value=new_refresh,
+                expires=refresh_exp,
+                httponly=True,
+                secure=True,
+                samesite='None',
             )
 
         return response
