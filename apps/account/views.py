@@ -332,49 +332,26 @@ class LogoutView(APIView):
 
 class TokenRefreshView(APIView):
     """
-    - ROTATE_REFRESH_TOKENS=True일 때,
-      새로 발급된 refresh 토큰/액세스 토큰을
-      HTTP-Only 쿠키에 함께 담아서 반환.
-    - 쿠키 만료(expires)를 토큰의 exp 클레임에 맞춰 슬라이딩 갱신.
+    JWT Access Token 재발급
     """
-    def post(self, request, *args, **kwargs):
-        serializer = TokenRefreshSerializer(data=request.data)
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        refresh_token = request.COOKIES.get("refresh_token")
+        if not refresh_token:
+            return Response({"error": "No refresh_token"}, status=status.HTTP_401_UNAUTHORIZED)
 
         try:
-            serializer.is_valid(raise_exception=True)
-        except Exception:
-            return Response({"detail": "Invalid or expired refresh token"}, status=status.HTTP_401_UNAUTHORIZED)
+            refresh = RefreshToken(refresh_token)
+            new_access_token = str(refresh.access_token)
 
-        new_access = serializer.validated_data['access']
-        new_refresh = serializer.validated_data.get('refresh')
-
-        response = Response({"message": "Token refreshed"}, status=status.HTTP_200_OK)
-
-        at = AccessToken(new_access)
-        access_exp = datetime.fromtimestamp(at['exp'], tz=dj_timezone.utc)
-        response.set_cookie(
-            key='access_token',
-            value=new_access,
-            expires=access_exp,
-            httponly=True,
-            secure=True,
-            samesite='None',
-        )
-
-        if new_refresh:
-            rt = RefreshToken(new_refresh)
-            refresh_exp = datetime.fromtimestamp(rt['exp'], tz=dj_timezone.utc)
-            response.set_cookie(
-                key='refresh_token',
-                value=new_refresh,
-                expires=refresh_exp,
-                httponly=True,
-                secure=True,
-                samesite='None',
-            )
-
-        return response
-
+            response = Response({"message": "Access token has been refreshed."}, status=status.HTTP_200_OK)
+            response.set_cookie('access_token', value=new_access_token, secure=True, samesite='None')
+            return response
+        
+        except TokenError:
+            return Response({"error": "Invalid refresh token. Please log in again."}, status=status.HTTP_401_UNAUTHORIZED)
+        
 
 class SchoolListView(generics.ListAPIView):
     """
