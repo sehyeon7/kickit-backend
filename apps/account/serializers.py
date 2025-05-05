@@ -165,13 +165,14 @@ class PasswordResetSerializer(serializers.Serializer):
 
 class BlockedUserSerializer(serializers.ModelSerializer):
     nickname = serializers.SerializerMethodField()
+    profile_image = serializers.SerializerMethodField()
 
     class Meta:
         model = User
-        fields = ["id", "username", "nickname"]
+        fields = ["id", "username", "nickname", "profile_image"]
 
     def get_nickname(self, obj):
-        # User 모델에서 UserProfile.nickname을 가져오려면
-        # user.profile.nickname이 존재하면 반환
-        profile = getattr(obj, 'profile', None)
-        return profile.nickname if profile else None
+        return getattr(obj.profile, 'nickname', None)
+
+    def get_profile_image(self, obj):
+        return getattr(obj.profile, 'profile_image', None)
