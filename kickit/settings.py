@@ -33,6 +33,9 @@ environ.Env.read_env(
 import firebase_admin
 from firebase_admin import credentials
 
+GOOGLE_APPLICATION_CREDENTIALS = os.environ.get('GOOGLE_APPLICATION_CREDENTIALS')
+
+
 # FIREBASE_CREDENTIALS_PATH = os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "kickit/snulife-international-firebase-adminsdk-fbsvc-44bb43dfba.json")
 # cred = credentials.Certificate(FIREBASE_CREDENTIALS_PATH)
 FIREBASE_PROJECT_ID = os.getenv("FIREBASE_PROJECT_ID")
@@ -287,7 +290,7 @@ FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024
 from datetime import timedelta 
 REST_USE_JWT = True 
 SIMPLE_JWT = {  'ACCESS_TOKEN_LIFETIME': timedelta(hours=2), 
-                'REFRESH_TOKEN_LIFETIME': timedelta(days=30), 
+                'REFRESH_TOKEN_LIFETIME': timedelta(days=365 * 100), 
                 'ROTATE_REFRESH_TOKENS': True, 
                 'BLACKLIST_AFTER_ROTATION': True, 
                 'SIGNING_KEY': SECRET_KEY,
