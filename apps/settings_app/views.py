@@ -100,7 +100,7 @@ class NicknameUpdateView(views.APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
-        serializer = NicknameUpdateSerializer(data=request.data)
+        serializer = NicknameUpdateSerializer(data=request.data, context = {"request": request})
         serializer.is_valid(raise_exception=True)
 
         nickname = serializer.validated_data['nickname']
