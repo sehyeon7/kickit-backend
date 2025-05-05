@@ -12,6 +12,8 @@ from django.db import models
 from apps.board.pagination import PostCursorPagination
 from django.contrib.admin.views.decorators import staff_member_required
 from django.utils.decorators import method_decorator
+from django.db.models import F, Value
+from django.db.models.functions import Replace
 
 from .models import UserSetting, NotificationType, NotificationCategory, ContactUs
 from .serializers import (
@@ -120,7 +122,11 @@ class NicknameUpdateView(views.APIView):
 
         # 알림(`Notification`)에서 유저가 포함된 메시지 업데이트
         Notification.objects.filter(message__icontains=old_nickname).update(
-            message=models.F("message").replace(old_nickname, nickname)
+            message=Replace(
+                F('message'),
+                Value(old_nickname),
+                Value(nickname)
+            )
         )
 
 
