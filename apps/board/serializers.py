@@ -3,6 +3,15 @@ from django.shortcuts import get_object_or_404
 from django.contrib.auth.models import User
 from .models import Board, Post, Comment, PostLike, LikeType, CommentLike, SearchHistory
 from django.core.files.uploadedfile import InMemoryUploadedFile
+from django.conf import settings
+
+DEFAULT_DELETED_USER_IMAGE = (
+    f"{settings.SUPABASE_URL}"
+    f"/storage/v1/object/public/{settings.SUPABASE_BUCKET}"
+    "/profile_images/deleted_user.png"
+)
+
+
 class BoardSerializer(serializers.ModelSerializer):
     class Meta:
         model = Board
@@ -31,8 +40,12 @@ class CommentSerializer(serializers.ModelSerializer):
         read_only_fields = ['user_id', 'user_profile_image', 'user_nickname', 'reply_target_user_nickname', 'like_count', 'is_liked']
 
     def get_user_profile_image(self, obj):
-        profile = getattr(obj.author, 'profile', None)
-        return profile.profile_image if profile and profile.profile_image else None
+        user = obj.author
+        profile = getattr(user, 'profile', None)
+        if not user.is_active:
+            return DEFAULT_DELETED_USER_IMAGE
+        return profile.profile_image
+
     
     def get_user_nickname(self, obj):
         return obj.author_nickname
@@ -85,11 +98,18 @@ class PostSerializer(serializers.ModelSerializer):
     
     def get_author(self, obj):
         """ 작성자 정보 반환 """
-        profile = getattr(obj.author, 'profile', None)
+        user = obj.author
+        profile = getattr(user, 'profile', None)
+        # ③ 여기서도 동일하게 치환
+        if user.is_active and profile and profile.profile_image:
+            img = profile.profile_image
+        else:
+            img = DEFAULT_DELETED_USER_IMAGE
+            
         return {
-            "id": obj.author.id,
+            "id": user.id,
             "nickname": obj.author_nickname,
-            "profile_image": profile.profile_image if profile and profile.profile_image else None
+            "profile_image": img
         }
     
     def get_comment_count(self, obj):
