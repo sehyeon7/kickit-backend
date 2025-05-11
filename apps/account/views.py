@@ -191,7 +191,7 @@ class UserSignupView(APIView):
         
         
         # 파일 형식 검증 (JPG, PNG만 허용)
-        allowed_extensions = ["jpg", "jpeg", "png"]
+        allowed_extensions = ["jpg", "jpeg", "png", "webp"]
         max_size = 5 * 1024 * 1024
         
         image_urls = []
@@ -201,7 +201,7 @@ class UserSignupView(APIView):
             file_ext = image_file.name.split('.')[-1].lower()
 
             if file_ext not in allowed_extensions:
-                return Response({"error": "Unsupported file format. Only JPG and PNG are allowed."}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({"error": "Unsupported file format. Only JPG and PNG and WEBP are allowed."}, status=status.HTTP_400_BAD_REQUEST)
 
             if image_file.size > max_size:
                 return Response({"error": "File size cannot exceed 5MB."}, status=status.HTTP_400_BAD_REQUEST)

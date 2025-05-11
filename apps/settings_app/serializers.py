@@ -13,11 +13,11 @@ def validate_image_extension(image):
     """
     허용된 이미지 확장자만 업로드 가능하도록 검증
     """
-    valid_extensions = ["jpg", "jpeg", "png"]
+    valid_extensions = ["jpg", "jpeg", "png", "webp"]
     file_ext = image.name.split(".")[-1].lower()
     
     if file_ext not in valid_extensions:
-        raise ValidationError("Unsupported file format. Only jpg, jpeg, and png are allowed.")
+        raise ValidationError("Unsupported file format. Only jpg, jpeg, png and webp are allowed.")
 
     return image
 
