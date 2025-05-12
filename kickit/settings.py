@@ -121,6 +121,19 @@ sentry_sdk.init(
     send_default_pii=True,
 )
 
+CELERY_BROKER_URL = 'sqs://'
+
+CELERY_BROKER_TRANSPORT_OPTIONS = {
+    'region': 'ap-northeast-2',
+    'predefined_queues': {
+        'celery': {
+            'url': 'https://sqs.ap-northeast-2.amazonaws.com/717279717583/celery',
+            'access_key_id': SUPABASE_AWS_ACCESS_KEY_ID,
+            'secret_access_key': SUPABASE_AWS_SECRET_ACCESS_KEY,
+        }
+    }
+}
+CELERY_TASK_DEFAULT_QUEUE = 'celery'
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
