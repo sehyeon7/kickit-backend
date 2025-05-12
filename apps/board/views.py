@@ -206,7 +206,7 @@ class PostUpdateView(generics.UpdateAPIView):
         new_images = self.request.FILES.getlist('new_images', [])  # MultipartFile 리스트
 
         # 기존 DB의 이미지 URL 가져오기
-        current_images = post.images.values_list('image_url', flat=True)
+        current_images = post.images or []
 
         # 삭제할 이미지 확인 후 Supabase에서 제거
         images_to_delete = set(current_images) - set(existing_images)
