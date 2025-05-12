@@ -15,14 +15,22 @@ FCM_API_URL = f"https://fcm.googleapis.com/v1/projects/{settings.FIREBASE_PROJEC
 
 def get_firebase_credentials_json():
     file_path = "/etc/secrets/firebase.json"
-    if not os.path.exists(file_path):
-        print("Firebase 자격 증명 파일이 존재하지 않습니다.")
-        return None
+    # 1) 로컬 파일이 있으면 그대로 사용
+    if os.path.exists(file_path):
+        try:
+            with open(file_path, "r") as f:
+                return f.read()
+        except Exception as e:
+            print("Firebase 자격 증명 파일 읽기 실패:", e)
+    # 2) 없거나 읽기 실패 시 Secrets Manager에서 가져오기
     try:
-        with open(file_path, "r") as f:
-            return f.read()
+        import boto3
+        from django.conf import settings
+        client = boto3.client("secretsmanager", region_name=settings.AWS_REGION)
+        resp = client.get_secret_value(SecretId=settings.FIREBASE_SECRET_NAME)
+        return resp["SecretString"]
     except Exception as e:
-        print("Firebase 자격 증명 파일 읽기 실패:", e)
+        print("Secrets Manager에서 자격 증명 읽기 실패:", e)
         return None
     
 def get_fcm_access_token():
