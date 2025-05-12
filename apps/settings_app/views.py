@@ -278,7 +278,7 @@ class LikedPostsView(generics.ListAPIView):
     pagination_class = PostCursorPagination
 
     def get_queryset(self):
-        return Post.objects.filter(likes__user=self.request.user).prefetch_related("images", "likes", "comments")
+        return Post.objects.filter(likes__user=self.request.user).prefetch_related("likes", "comments")
 
 class ScrappedPostsView(generics.ListAPIView):
     """
