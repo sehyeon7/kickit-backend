@@ -71,7 +71,7 @@ def validate_password(password):
         raise ValueError("Password must be at least 8 characters long.")
     if not re.search(r"[0-9]", password):
         raise ValueError("Password must contain at least one number.")
-    if not re.search(r"[!@#$%^&*(),.?\":{}|<>]", password):
+    if not re.search(r"[!@#\$%^&*()\[\]{}|\\:;<>,.?/\-_+=~`]", password):
         raise ValueError("Password must contain at least one special character.")
     return password
 
