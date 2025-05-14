@@ -11,6 +11,7 @@ from datetime import timedelta
 from django.utils.timezone import now
 from rest_framework.views import APIView
 from django.db.models import Count
+import json
 
 from apps.notification.utils import handle_comment_notification, handle_like_notification, handle_mention_notification
 from django.core.files.uploadedfile import InMemoryUploadedFile
@@ -201,9 +202,26 @@ class PostUpdateView(generics.UpdateAPIView):
         if 'content' not in self.request.data:
             raise ValidationError({"content": ["This field is required."]})
 
-        # 기존 이미지 리스트 (URL) + 새로 추가된 이미지 (MultipartFile)
-        existing_images = self.request.data.getlist('existing_images', [])  # 문자열 리스트
-        new_images = self.request.FILES.getlist('new_images', [])  # MultipartFile 리스트
+        # raw 에는 application/json 바디로 넘어온 list 혹은
+        # form-data 에서 첫 번째 값(문자열) 등이 담김
+        raw = self.request.data.get('existing_images', None)
+
+        # 1) form-data multiple field
+        if hasattr(self.request.data, 'getlist'):
+            existing = self.request.data.getlist('existing_images')
+        # 2) JSON body 로 ['url1','url2'] 그대로 넘어온 경우
+        elif isinstance(raw, list):
+            existing_images = raw
+        # 3) JSON 문자열로 직렬화돼 넘어온 경우 ("[\"url1\",\"url2\"]")
+        elif isinstance(raw, str):
+            try:
+                existing_images = json.loads(raw)
+            except ValueError:
+                existing_images = [raw]
+        else:
+            existing_images = []
+
+        new_images = self.request.FILES.getlist('new_images')  # MultipartFile 리스트
 
         # 기존 DB의 이미지 URL 가져오기
         current_images = post.images or []
