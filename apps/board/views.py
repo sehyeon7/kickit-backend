@@ -208,7 +208,7 @@ class PostUpdateView(generics.UpdateAPIView):
 
         # 1) form-data multiple field
         if hasattr(self.request.data, 'getlist'):
-            existing = self.request.data.getlist('existing_images')
+            existing_images = self.request.data.getlist('existing_images')
         # 2) JSON body 로 ['url1','url2'] 그대로 넘어온 경우
         elif isinstance(raw, list):
             existing_images = raw
