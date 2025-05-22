@@ -242,6 +242,12 @@ class PostUpdateView(generics.UpdateAPIView):
         # 기존 이미지 + 새로운 이미지 합쳐서 저장
         serializer.save(images=existing_images + uploaded_image_urls)
 
+    def update(self, request, *args, **kwargs):
+        super().update(request, *args, **kwargs)       
+        post = self.get_object()
+        detailed_serializer = PostSerializer(post, context={'request': request})
+        return Response(detailed_serializer.data)
+
 class PostDeleteView(generics.DestroyAPIView):
     """
     특정 Post 삭제
