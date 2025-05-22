@@ -18,16 +18,29 @@ from django.conf import settings
 from django.core.mail import send_mail
 from apps.notification.tasks import send_push_notification_async, send_fcm_push_notification
 
-def send_notification(user, title, message, board_id=None, post_id=None, comment_id=None):
+def send_notification(user, title, message, board_id=None, post_id=None, comment_id=None, sender=None):
     """
     user의 알림 설정(UserSetting)을 확인해, In-app 알림 / Push 알림을 보낸다.
     """
     user_setting = UserSetting.objects.filter(user=user).first()
+
+    if sender == user:
+        return
+    
+    if Notification.objects.filter(
+        user=user,
+        sender=sender,
+        post_id=post_id,
+        comment_id=comment_id,
+        title=title
+    ).exists():
+        return
     
 
     # 1) In-app 알림 생성
     Notification.objects.create(
         user=user,
+        sender=sender,
         title=title,
         message=message,
         board_id=board_id,
@@ -53,8 +66,9 @@ def handle_comment_notification(comment, post, board, parent_comment):
         if user_setting and user_setting.notification_categories.filter(name="Commented").exists():
             send_notification(
                 user=parent_comment_author,
-                title="New reply to your comment!",
-                message=f"{comment_author.profile.nickname}: {comment.content}",
+                sender=comment_author,
+                title=f"{comment_author.profile.nickname} replied to your comment!",
+                message=f"{comment.content}",
                 board_id=board.id,
                 post_id=post.id,
                 comment_id=comment.id
@@ -65,8 +79,9 @@ def handle_comment_notification(comment, post, board, parent_comment):
         if user_setting and user_setting.notification_categories.filter(name="Commented").exists():
             send_notification(
                 user=post_author,
-                title="New comment on your post!",
-                message=f"{comment_author.profile.nickname}: {comment.content}",
+                sender=comment_author,
+                title=f"{comment_author.profile.nickname} commented on your post!",
+                message=f"{comment.content}",
                 board_id=board.id,
                 post_id=post.id,
                 comment_id=comment.id
@@ -78,24 +93,35 @@ def handle_like_notification(user, board, post_or_comment, is_post=True):
     - 댓글 좋아요: 댓글 작성자에게 알림
     """
     target_author = post_or_comment.author
+    if user == target_author:
+        return
+    
     user_setting = UserSetting.objects.filter(user=target_author).first()
     if not user_setting or not user_setting.notification_categories.filter(name="Liked").exists():
         return
 
     if is_post:
-        title = "Someone liked your post!"
+        title = f"{user.profile.nickname} liked your post!"
         message = f"'{post_or_comment.content}'"
         board_id = board.id
         post_id = post_or_comment.id 
         comment_id = None
     else:
-        title = "Someone liked your comment!"
+        title = f"{user.profile.nickname} liked your comment!"
         message = f"'{post_or_comment.content}'"
         board_id = board.id
         post_id = post_or_comment.post.id  
         comment_id = post_or_comment.id
 
-    send_notification(target_author, title, message, board_id=board_id, post_id=post_id, comment_id=comment_id)
+    send_notification(
+        user=target_author,
+        sender=user,
+        title=title,
+        message=message,
+        board_id=board.id,
+        post_id=post_id,
+        comment_id=comment_id,
+    )
 
 def handle_mention_notification(board, comment, mention_usernames):
     """
@@ -110,8 +136,9 @@ def handle_mention_notification(board, comment, mention_usernames):
             if user_setting and user_setting.notification_categories.filter(name="Mentioned").exists():
                 send_notification(
                     user=mentioned_user,
-                    title="You were mentioned in a comment",
-                    message=f"{comment_author.profile.nickname} mentioned you: {comment.content}",
+                    sender=comment_author, 
+                    title=f"{comment_author.profile.nickname} mentioned you in a comment",
+                    message=f"{comment.content}",
                     board_id = board.id,
                     post_id=comment.post.id,
                     comment_id=comment.id
