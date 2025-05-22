@@ -22,7 +22,7 @@ from .serializers import (
     ScrappedPostsSerializer, EmailUpdateSerializer,
     NotificationTypeSerializer, NotificationCategorySerializer, ContactUsSerializer, ProfileUpdateSerializer
 )
-from apps.board.serializers import PostSerializer
+from apps.board.serializers import PostSerializer, CommentSerializer
 from apps.account.models import UserProfile
 from apps.board.models import PostLike, Post, Comment
 from apps.notification.models import Notification
@@ -344,3 +344,20 @@ class ContactUsListView(generics.ListAPIView):
     serializer_class = ContactUsSerializer
     permission_classes = [permissions.IsAdminUser]
     queryset = ContactUs.objects.all().order_by("-created_at")
+
+class MyPostsView(generics.ListAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = PostSerializer
+    pagination_class = PostCursorPagination
+
+    def get_queryset(self):
+        return Post.objects.filter(author=self.request.user).prefetch_related('likes', 'comments', 'board')
+
+
+class MyCommentsView(generics.ListAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = CommentSerializer
+
+    def get_queryset(self):
+        user = self.request.user
+        return Comment.objects.filter(author=user, parent__isnull=True).prefetch_related('replies', 'likes')
