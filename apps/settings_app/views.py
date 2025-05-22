@@ -17,10 +17,10 @@ from django.db.models.functions import Replace
 
 from .models import UserSetting, NotificationType, NotificationCategory, ContactUs
 from .serializers import (
-    UserSettingSerializer, NicknameUpdateSerializer,
+    UserSettingSerializer,
     PasswordChangeSerializer, UserDeactivateSerializer,
     ScrappedPostsSerializer, EmailUpdateSerializer,
-    ProfileImageUpdateSerializer, NotificationTypeSerializer, NotificationCategorySerializer, ContactUsSerializer
+    NotificationTypeSerializer, NotificationCategorySerializer, ContactUsSerializer, ProfileUpdateSerializer
 )
 from apps.board.serializers import PostSerializer
 from apps.account.models import UserProfile
@@ -94,43 +94,79 @@ class NotificationCategoryListView(generics.ListAPIView):
 
     def get_queryset(self):
         return NotificationCategory.objects.all()
-
-class NicknameUpdateView(views.APIView):
-    """
-    POST: 닉네임 변경
-    """
+    
+class ProfileUpdateView(views.APIView):
     permission_classes = [permissions.IsAuthenticated]
 
-    def post(self, request):
-        serializer = NicknameUpdateSerializer(data=request.data, context = {"request": request})
+    def patch(self, request):
+        serializer = ProfileUpdateSerializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
 
-        nickname = serializer.validated_data['nickname']
         user = request.user
         profile = user.profile
 
-        old_nickname = profile.nickname
+        nickname = serializer.validated_data.get("nickname", None)
+        image = serializer.validated_data.get("image", None)
 
-        profile.nickname = nickname
+        # 닉네임 변경
+        if nickname:
+            old_nickname = profile.nickname
+            profile.nickname = nickname
+
+            # 게시글 및 댓글 반영
+            Post.objects.filter(author=user).update(author_nickname=nickname)
+            Comment.objects.filter(author=user).update(author_nickname=nickname)
+            Notification.objects.filter(message__icontains=old_nickname).update(
+                message=Replace(F('message'), Value(old_nickname), Value(nickname))
+            )
+
+        # 이미지 변경
+        if image:
+            uploaded_url = upload_image_to_supabase(image)
+            if not uploaded_url:
+                return Response({"error": "Image upload failed."}, status=500)
+            profile.profile_image = uploaded_url
+
         profile.save()
 
-        # 게시글(`Post`)의 작성자 닉네임 업데이트
-        Post.objects.filter(author=user).update(author_nickname=nickname)
+        return Response({"detail": "Profile has been updated."}, status=200)
 
-        # 댓글(`Comment`)의 작성자 닉네임 업데이트
-        Comment.objects.filter(author=user).update(author_nickname=nickname)
+# class NicknameUpdateView(views.APIView):
+#     """
+#     POST: 닉네임 변경
+#     """
+#     permission_classes = [permissions.IsAuthenticated]
 
-        # 알림(`Notification`)에서 유저가 포함된 메시지 업데이트
-        Notification.objects.filter(message__icontains=old_nickname).update(
-            message=Replace(
-                F('message'),
-                Value(old_nickname),
-                Value(nickname)
-            )
-        )
+#     def post(self, request):
+#         serializer = NicknameUpdateSerializer(data=request.data, context = {"request": request})
+#         serializer.is_valid(raise_exception=True)
+
+#         nickname = serializer.validated_data['nickname']
+#         user = request.user
+#         profile = user.profile
+
+#         old_nickname = profile.nickname
+
+#         profile.nickname = nickname
+#         profile.save()
+
+#         # 게시글(`Post`)의 작성자 닉네임 업데이트
+#         Post.objects.filter(author=user).update(author_nickname=nickname)
+
+#         # 댓글(`Comment`)의 작성자 닉네임 업데이트
+#         Comment.objects.filter(author=user).update(author_nickname=nickname)
+
+#         # 알림(`Notification`)에서 유저가 포함된 메시지 업데이트
+#         Notification.objects.filter(message__icontains=old_nickname).update(
+#             message=Replace(
+#                 F('message'),
+#                 Value(old_nickname),
+#                 Value(nickname)
+#             )
+#         )
 
 
-        return Response({"detail": f"Nickname has been changed to {nickname}."}, status=status.HTTP_200_OK)
+#         return Response({"detail": f"Nickname has been changed to {nickname}."}, status=status.HTTP_200_OK)
 
 class EmailUpdateView(views.APIView):
     """
@@ -192,33 +228,33 @@ class PasswordChangeView(views.APIView):
                 {"error": "An error occurred while changing the password. Please contact the administrator."},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
-class ProfileImageUpdateView(views.APIView):
-    """
-    PATCH: 프로필 이미지 변경
-    - Supabase Storage에 이미지 업로드 후 URL 저장
-    """
-    permission_classes = [permissions.IsAuthenticated]
+# class ProfileImageUpdateView(views.APIView):
+#     """
+#     PATCH: 프로필 이미지 변경
+#     - Supabase Storage에 이미지 업로드 후 URL 저장
+#     """
+#     permission_classes = [permissions.IsAuthenticated]
 
-    def patch(self, request):
-        serializer = ProfileImageUpdateSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
+#     def patch(self, request):
+#         serializer = ProfileImageUpdateSerializer(data=request.data)
+#         serializer.is_valid(raise_exception=True)
 
-        user_profile = request.user.profile
+#         user_profile = request.user.profile
 
-        try:
-            # Supabase에 이미지 업로드
-            uploaded_url = upload_image_to_supabase(serializer.validated_data['image'])
-            if not uploaded_url:
-                raise Exception("Supabase Upload Failure")
+#         try:
+#             # Supabase에 이미지 업로드
+#             uploaded_url = upload_image_to_supabase(serializer.validated_data['image'])
+#             if not uploaded_url:
+#                 raise Exception("Supabase Upload Failure")
 
-            # 기존 프로필 이미지 업데이트
-            user_profile.profile_image = uploaded_url
-            user_profile.save()
+#             # 기존 프로필 이미지 업데이트
+#             user_profile.profile_image = uploaded_url
+#             user_profile.save()
 
-            return Response({"profile_image": uploaded_url}, status=status.HTTP_200_OK)
+#             return Response({"profile_image": uploaded_url}, status=status.HTTP_200_OK)
         
-        except Exception as e:
-            return Response({"error": "Failed to upload the image."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+#         except Exception as e:
+#             return Response({"error": "Failed to upload the image."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class UserDeactivateView(views.APIView):
