@@ -37,6 +37,24 @@ def apple_app_site_association(request):
     }   
     return JsonResponse(data, content_type='application/json')
 
+def assetlinks(request):
+    data = [
+        {
+            "relation": [
+                "delegate_permission/common.handle_all_urls",
+                "delegate_permission/common.get_login_creds"
+            ],
+            "target": {
+                "namespace": "android_app",
+                "package_name": "com.snulife.snulife_international",
+                "sha256_cert_fingerprints": [
+                    "E0:3F:FD:19:64:77:A9:E9:79:E3:4A:F7:05:54:92:E7:7E:F0:95:CD:96:5B:68:35:34:52:31:C5:DC:5F:32:8A"
+                ]
+            }
+        }
+    ]
+    return JsonResponse(data, safe=False, content_type='application/json')
+
 urlpatterns = [
     path('', index),
     path('admin/', admin.site.urls),
@@ -45,4 +63,5 @@ urlpatterns = [
     path('notification/', include('apps.notification.urls')),
     path('settings/', include('apps.settings_app.urls')),
     path('.well-known/apple-app-site-association', apple_app_site_association),
+    path('.well-known/assetlinks.json', assetlinks),
 ]
