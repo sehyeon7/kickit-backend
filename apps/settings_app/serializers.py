@@ -2,12 +2,20 @@ from rest_framework import serializers
 from django.contrib.auth.models import User
 from .models import UserSetting
 from apps.account.models import UserProfile
+from apps.board.models import Comment
 from apps.settings_app.models import NotificationType, NotificationCategory
 from django.core.validators import validate_email
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from rest_framework import serializers
+from django.conf import settings
 from .models import ContactUs
+
+DEFAULT_DELETED_USER_IMAGE = (
+    f"{settings.SUPABASE_URL}"
+    f"/storage/v1/object/public/{settings.SUPABASE_BUCKET}"
+    "/profile_images/deleted_user.png"
+)
 
 def validate_image_extension(image):
     """
@@ -190,3 +198,39 @@ class ContactUsSerializer(serializers.ModelSerializer):
         model = ContactUs
         fields = ['id', 'user', 'email', 'title', 'details', 'created_at', 'is_resolved']
         read_only_fields = ['id', 'created_at', 'is_resolved']
+
+class MyCommentSerializer(serializers.ModelSerializer):
+        board_id = serializers.ReadOnlyField(source='post.board_id')
+        post_id = serializers.ReadOnlyField(source='post.id')
+        user_id = serializers.IntegerField(source='author.id', read_only=True)
+        user_profile_image = serializers.SerializerMethodField()
+        user_nickname = serializers.SerializerMethodField()
+        like_count = serializers.SerializerMethodField()
+        is_liked = serializers.SerializerMethodField()
+
+        class Meta:
+            model = Comment
+            fields = [
+                'id', 'board_id', 'post_id', 'user_id', 'user_profile_image',
+                'user_nickname', 'content', 'created_at',
+                'like_count', 'is_liked'
+            ]
+
+        def get_user_profile_image(self, obj):
+            user = obj.author
+            profile = getattr(user, 'profile', None)
+            if not user.is_active:
+                return DEFAULT_DELETED_USER_IMAGE
+            return profile.profile_image
+
+        def get_user_nickname(self, obj):
+            return obj.author_nickname
+
+        def get_like_count(self, obj):
+            return obj.likes.count()
+
+        def get_is_liked(self, obj):
+            user = self.context.get('request').user
+            if not user or not user.is_authenticated:
+                return False
+            return obj.likes.filter(user=user).exists()

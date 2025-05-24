@@ -20,7 +20,8 @@ from .serializers import (
     UserSettingSerializer,
     PasswordChangeSerializer, UserDeactivateSerializer,
     ScrappedPostsSerializer, EmailUpdateSerializer,
-    NotificationTypeSerializer, NotificationCategorySerializer, ContactUsSerializer, ProfileUpdateSerializer
+    NotificationTypeSerializer, NotificationCategorySerializer, ContactUsSerializer, ProfileUpdateSerializer,
+    MyCommentSerializer
 )
 from apps.board.serializers import PostSerializer, CommentSerializer
 from apps.account.models import UserProfile
@@ -356,8 +357,9 @@ class MyPostsView(generics.ListAPIView):
 
 class MyCommentsView(generics.ListAPIView):
     permission_classes = [permissions.IsAuthenticated]
-    serializer_class = CommentSerializer
+    pagination_class = PostCursorPagination
+    serializer_class = MyCommentSerializer
 
     def get_queryset(self):
         user = self.request.user
-        return Comment.objects.filter(author=user, parent__isnull=True).prefetch_related('replies', 'likes')
+        return Comment.objects.filter(author=user, parent__isnull=True).prefetch_related('post__board', 'likes')
