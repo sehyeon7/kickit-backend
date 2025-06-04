@@ -155,20 +155,20 @@ def send_verification_notification(user, success=True):
     
     if success:
         message = f"{user.username}, your account has been successfully verified! 🎉 You now have access to all features."
+
+        # ✅ 인증 성공한 경우에만 In-app 알림 저장
+        try:
+            Notification.objects.create(
+                user=user,
+                title=title,
+                message=message
+            )
+        except Exception as e:
+            print("[ERROR] In-app 알림 생성 실패:", e)
     else:
         message = f"{user.username}, your account verification has been denied. Please re-upload your verification image."
 
-    # ✅ In-app 알림 저장
-    try:
-        Notification.objects.create(
-            user=user,
-            title=title,
-            message=message
-        )
-    except Exception as e:
-        print("[ERROR] In-app 알림 생성 실패:", e)
-
-    # ✅ Push 알림 전송 (유저의 FCM 기기 등록 여부 확인)
+    # ✅ Push 알림 전송
     try:
         send_fcm_push_notification(user, title, message)
     except Exception as e:
