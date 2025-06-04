@@ -130,7 +130,10 @@ class ProfileUpdateView(views.APIView):
 
         profile.save()
 
-        return Response({"detail": "Profile has been updated."}, status=200)
+        return Response({
+            "detail": "Profile has been updated.",
+            "profile_image": profile.profile_image if image else None
+        }, status=200)
 
 # class NicknameUpdateView(views.APIView):
 #     """
