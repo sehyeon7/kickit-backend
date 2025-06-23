@@ -280,6 +280,9 @@ class HidePostView(generics.GenericAPIView):
         post = get_object_or_404(Post, id=post_id, board_id=board_id)
         user = request.user
 
+        if post.author == user:
+            return Response({"error": "You cannot hide your own post."}, status=status.HTTP_400_BAD_REQUEST)
+
         if user in post.hidden_by.all():
             # 이미 숨김 중 => 숨김 해제
             post.hidden_by.remove(user)
@@ -401,7 +404,7 @@ class CommentDeleteView(generics.DestroyAPIView):
             comment.save()
         else:
             comment.delete()
-            
+
         return Response({"detail": "The comment has been deleted."}, status=status.HTTP_204_NO_CONTENT)
 
 class PostLikeToggleView(generics.GenericAPIView):
@@ -472,6 +475,9 @@ class HideCommentView(generics.GenericAPIView):
     def post(self, request, board_id, post_id, comment_id):
         user = request.user
         comment = get_object_or_404(Comment, id=comment_id, post_id=post_id)
+
+        if comment.author == user:
+            return Response({"error": "You cannot hide your own comment."}, status=status.HTTP_400_BAD_REQUEST)
 
         if user in comment.hidden_by.all():
             # 이미 숨김 처리된 경우 → 숨김 해제
