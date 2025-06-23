@@ -77,6 +77,7 @@ class Comment(models.Model):
     content = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
     hidden_by = models.ManyToManyField(User, related_name="hidden_comments", blank=True) 
+    is_deleted = models.BooleanField(default=False)
 
 
     def __str__(self):

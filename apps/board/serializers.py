@@ -48,10 +48,25 @@ class CommentSerializer(serializers.ModelSerializer):
 
     
     def get_user_nickname(self, obj):
-        return obj.author_nickname
+        return obj.author_nickname if not obj.is_deleted else None
     
     def get_reply_target_user_nickname(self, obj):
-        return obj.parent.author_nickname if obj.parent else None
+        return obj.parent.author_nickname if obj.parent and not obj.parent.is_deleted else None
+    
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+
+        if instance.is_deleted:
+            data['content'] = "삭제된 댓글입니다."
+            data['user_profile_image'] = None
+            data['user_nickname'] = None
+            data['reply_target_user_nickname'] = None
+            # 필요하면 like_count, is_liked, replies도 비워줄 수 있음
+            # 예시:
+            # data['like_count'] = 0
+            # data['is_liked'] = False
+            # data['replies'] = []
+        return data
     
     def get_like_count(self, obj):
         return obj.likes.count()

@@ -387,15 +387,21 @@ class CommentDeleteView(generics.DestroyAPIView):
         user = request.user
         comment = get_object_or_404(Comment, id=comment_id, post_id=post_id)
 
-        # 대댓글이 있는 경우 삭제 불가 (추가된 로직)
-        if comment.replies.exists():
-            return Response({"error": "You cannot delete a comment that has replies."}, status=status.HTTP_400_BAD_REQUEST)
+        # # 대댓글이 있는 경우 삭제 불가 (추가된 로직)
+        # if comment.replies.exists():
+        #     return Response({"error": "You cannot delete a comment that has replies."}, status=status.HTTP_400_BAD_REQUEST)
 
         # 본인 댓글이거나 관리자인 경우 삭제 가능
         if comment.author != user and not user.is_staff:
             return Response({"error": "You do not have permission to delete this comment."}, status=status.HTTP_403_FORBIDDEN)
 
-        comment.delete()
+        if comment.replies.exists():
+            # 실제 삭제하지 않고 is_deleted로 표시
+            comment.is_deleted = True
+            comment.save()
+        else:
+            comment.delete()
+            
         return Response({"detail": "The comment has been deleted."}, status=status.HTTP_204_NO_CONTENT)
 
 class PostLikeToggleView(generics.GenericAPIView):
