@@ -62,6 +62,7 @@ urlpatterns = [
     path('board/', include('apps.board.urls')),
     path('notification/', include('apps.notification.urls')),
     path('settings/', include('apps.settings_app.urls')),
+    path('meetup/', include('apps.meetup.urls')),
     path('.well-known/apple-app-site-association', apple_app_site_association),
     path('.well-known/assetlinks.json', assetlinks),
 ]

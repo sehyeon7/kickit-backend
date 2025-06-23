@@ -162,6 +162,7 @@ INSTALLED_APPS = [
     'apps.settings_app',
     'fcm_django',
     'apps.firebase',
+    'apps.meetup'
 ]
 
 MIDDLEWARE = [
