@@ -58,6 +58,7 @@ class UserProfile(models.Model):
     nickname = models.CharField(max_length=50, blank=True)
     language = models.ForeignKey(Language, null=True, blank=True, on_delete=models.SET_NULL)
     nationality = models.ForeignKey(Nationality, null=True, blank=True, on_delete=models.SET_NULL)
+    introduce = models.CharField(max_length=200, blank=True, default="")
 
     profile_image = models.URLField(
         max_length=500, blank=True, null=True, 

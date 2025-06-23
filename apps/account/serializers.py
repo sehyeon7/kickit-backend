@@ -193,3 +193,23 @@ class BlockedUserSerializer(serializers.ModelSerializer):
 
     def get_profile_image(self, obj):
         return getattr(obj.profile, 'profile_image', None)
+    
+class IntroduceUpdateSerializer(serializers.Serializer):
+    introduce = serializers.CharField(
+        max_length=200,
+        required=True,
+        allow_blank=True,
+        error_messages={"max_length": "Introduce must be 200 characters or fewer."}
+    )    
+
+class OtherUserProfileSerializer(serializers.ModelSerializer):
+    language = serializers.CharField(source='language.language', read_only=True)
+    nationality = serializers.CharField(source='nationality.name', read_only=True)
+    school_name = serializers.CharField(source='school.name', read_only=True)
+
+    class Meta:
+        model = UserProfile
+        fields = [
+            'profile_image', 'nickname', 'introduce',
+            'language', 'nationality', 'school_name'
+        ]

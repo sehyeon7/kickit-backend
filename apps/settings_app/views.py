@@ -444,3 +444,43 @@ class ReportCommentView(APIView):
             reason_text=reason_text,
         )
         return Response(status=200)
+
+class ReportProfileView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        reporter = request.user
+        user_id = request.data.get("user_id")
+        reason_text = request.data.get("report_reason")
+
+        if not user_id or not reason_text:
+            return Response({"error": "user_id and report_reason are required."}, status=400)
+
+        if int(user_id) == reporter.id:
+            return Response({"error": "You cannot report yourself."}, status=400)
+
+        reported_user = User.objects.filter(id=user_id, is_active=True).first()
+        if not reported_user:
+            return Response({"error": "User not found."}, status=404)
+
+        # 프로필 신고는 post_id = 0, comment_id = None 으로 저장
+        already_reported = Report.objects.filter(
+            reporter=reporter,
+            post_id=0,
+            comment_id__isnull=True,
+            reported_user=reported_user
+        ).exists()
+
+        if already_reported:
+            return Response({"error": "You have already reported this user."}, status=400)
+
+        Report.objects.create(
+            reporter=reporter,
+            reported_user=reported_user,
+            board_id=0,
+            post_id=0,
+            comment_id=None,
+            reason=ReportReason.OTHER,
+            reason_text=reason_text
+        )
+        return Response(status=200)

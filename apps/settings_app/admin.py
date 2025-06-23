@@ -16,6 +16,7 @@ class ContactUsAdmin(admin.ModelAdmin):
 class ReportAdmin(admin.ModelAdmin):
     list_display = (
         'id',
+        'report_type',
         'reporter',
         'reported_user',
         'board_id',
@@ -52,3 +53,16 @@ class ReportAdmin(admin.ModelAdmin):
         'reason_text',
         'created_at',
     )
+
+    def report_type(self, obj):
+        """
+        게시글 신고 / 댓글 신고 / 프로필 신고 구분
+        """
+        if obj.post_id == 0 and obj.comment_id is None:
+            return "프로필 신고"
+        elif obj.comment_id is not None:
+            return "댓글 신고"
+        else:
+            return "게시글 신고"
+
+    report_type.short_description = "신고 유형"

@@ -42,7 +42,7 @@ from .serializers import (
     SchoolSerializer, GoogleLoginSerializer,
     NicknameCheckSerializer, ProfileUpdateSerializer,
     PasswordResetRequestSerializer, PasswordResetSerializer, BlockedUserSerializer,
-    LanguageSerializer, NationalitySerializer
+    LanguageSerializer, NationalitySerializer, IntroduceUpdateSerializer, OtherUserProfileSerializer
 )
 
 GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID')
@@ -570,3 +570,30 @@ class RegisterFCMTokenView(APIView):
 
         except Exception as e:
             return Response({"error": f"Failed to register FCM token. {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class IntroduceUpdateView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def put(self, request):
+        serializer = IntroduceUpdateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        introduce = serializer.validated_data["introduce"]
+        request.user.profile.introduce = introduce
+        request.user.profile.save()
+
+        return Response(status=200)
+
+class OtherUserProfileView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, user_id):
+        user = get_object_or_404(User, id=user_id, is_active=True)
+        profile = getattr(user, 'profile', None)
+
+        if not profile:
+            return Response({"error": "Profile not found."}, status=404)
+
+        serializer = OtherUserProfileSerializer(profile)
+        # 추후 meetup 연동 필요 시 created_meetups 추가
+        return Response(serializer.data, status=200)
