@@ -35,13 +35,14 @@ from rest_framework_simplejwt.serializers import TokenRefreshSerializer
 
 FRONTEND_HOST = os.getenv('FRONTEND_HOST')
 
-from .models import UserProfile, School, Department, AdmissionYear
+from .models import UserProfile, School, Department, AdmissionYear, Language, Nationality
 from apps.settings_app.models import NotificationType, UserSetting
 from .serializers import (
     UserSignupSerializer, GoogleAuthCheckSerializer, LoginSerializer, UserProfileSerializer,
-    SchoolSerializer, DepartmentSerializer, GoogleLoginSerializer,
+    SchoolSerializer, GoogleLoginSerializer,
     NicknameCheckSerializer, ProfileUpdateSerializer,
-    PasswordResetRequestSerializer, PasswordResetSerializer, AdmissionYearSerializer, BlockedUserSerializer
+    PasswordResetRequestSerializer, PasswordResetSerializer, BlockedUserSerializer,
+    LanguageSerializer, NationalitySerializer
 )
 
 GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID')
@@ -155,8 +156,10 @@ class UserSignupView(APIView):
         email = data["email"]
         nickname = data["nickname"]
         school_id = data["school"]
-        department_id = data["department"]
-        admission_year = data["admission_year"]
+        language_id = data["language"]
+        nationality_id = data["nationality"]
+        # department_id = data["department"]
+        # admission_year = data["admission_year"]
         password = data.get("password", None)
         google_sub = data.get("google_sub", None)
         is_verified = False
@@ -165,18 +168,21 @@ class UserSignupView(APIView):
         if not verification_images:
             return Response({"error": "A valid verification image is required."}, status=status.HTTP_400_BAD_REQUEST)
         
-        year_obj = AdmissionYear.objects.filter(year=admission_year).first()
-        if not year_obj:
-            return Response({"error": "Invalid admission year."}, status=400)
+        # year_obj = AdmissionYear.objects.filter(year=admission_year).first()
+        # if not year_obj:
+        #     return Response({"error": "Invalid admission year."}, status=400)
+
+        language = get_object_or_404(Language, id=language_id)
+        nationality = get_object_or_404(Nationality, id=nationality_id)
 
         if User.objects.filter(email=email).exists():
             return Response({"error": "This email is already registered."}, status=400)
         
         # 학교 및 학과 존재 여부 확인
         school = School.objects.filter(id=school_id).first()
-        department = Department.objects.filter(id=department_id).first()
-        if not school or not department:
-            return Response({"error": "Invalid school or department ID."}, status=400)
+        # department = Department.objects.filter(id=department_id).first()
+        if not school:
+            return Response({"error": "Invalid school."}, status=400)
 
         # 일반 회원가입 시 패스워드 필수
         if not google_sub and not password:
@@ -222,8 +228,10 @@ class UserSignupView(APIView):
 
         UserProfile.objects.create(
             user=user, google_sub=google_sub, nickname=nickname,
-            school_id=school_id, department_id=department_id,
-            admission_year=year_obj, is_verified=is_verified, verification_image=image_urls
+            school_id=school_id,
+            language=language,
+            nationality=nationality,
+            is_verified=is_verified, verification_image=image_urls
         )
 
         user.refresh_from_db()
@@ -362,35 +370,44 @@ class SchoolListView(generics.ListAPIView):
     serializer_class = SchoolSerializer
 
 
-class DepartmentListView(generics.ListAPIView):
-    """
-    /accounts/departments/?school_id=?
-    => 특정 학교에 속한 학과 리스트만 반환
-    """
-    serializer_class = DepartmentSerializer
+# class DepartmentListView(generics.ListAPIView):
+#     """
+#     /accounts/departments/?school_id=?
+#     => 특정 학교에 속한 학과 리스트만 반환
+#     """
+#     serializer_class = DepartmentSerializer
 
-    def get_queryset(self):
-        school_id = self.request.query_params.get('school_id')
-        if not school_id:
-            raise ValidationError({"error": "school_id query parameter is required"})
+#     def get_queryset(self):
+#         school_id = self.request.query_params.get('school_id')
+#         if not school_id:
+#             raise ValidationError({"error": "school_id query parameter is required"})
         
-        return Department.objects.filter(school_id=school_id).order_by('name')
+#         return Department.objects.filter(school_id=school_id).order_by('name')
 
-class AdmissionYearListView(generics.ListAPIView):
-    """
-    /accounts/admission_year/
-    => 전체 입학연도 목록을 반환
-    """
-    queryset = AdmissionYear.objects.all().order_by('id')
-    serializer_class = AdmissionYearSerializer
+# class AdmissionYearListView(generics.ListAPIView):
+#     """
+#     /accounts/admission_year/
+#     => 전체 입학연도 목록을 반환
+#     """
+#     queryset = AdmissionYear.objects.all().order_by('id')
+#     serializer_class = AdmissionYearSerializer
+
+class LanguageListView(generics.ListAPIView):
+    queryset = Language.objects.all()
+    serializer_class = LanguageSerializer
+    permission_classes = [permissions.AllowAny]
+
+class NationalityListView(generics.ListAPIView):
+    queryset = Nationality.objects.all()
+    serializer_class = NationalitySerializer
+    permission_classes = [permissions.AllowAny]
+
 
 class ProfileUpdateView(generics.UpdateAPIView):
     """
     PATCH /accounts/profile/
     body: {
       "school": <school_id>,
-      "admission_year": "2023",
-      "department": <department_id>
     }
     """
     permission_classes = [permissions.IsAuthenticated]

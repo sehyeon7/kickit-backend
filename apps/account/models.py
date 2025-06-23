@@ -35,6 +35,18 @@ class AdmissionYear(models.Model):
 
     def __str__(self):
         return self.year
+    
+class Language(models.Model):
+    language = models.CharField(max_length=100, unique=True)
+
+    def __str__(self):
+        return self.language
+
+class Nationality(models.Model):
+    name = models.CharField(max_length=100, unique=True)  # 영어 국가명
+
+    def __str__(self):
+        return self.name
 
 
 class UserProfile(models.Model):
@@ -44,6 +56,8 @@ class UserProfile(models.Model):
     department = models.ForeignKey(Department, null=True, blank=True, on_delete=models.SET_NULL)
     admission_year = models.ForeignKey(AdmissionYear, null=True, blank=True, on_delete=models.SET_NULL)
     nickname = models.CharField(max_length=50, blank=True)
+    language = models.ForeignKey(Language, null=True, blank=True, on_delete=models.SET_NULL)
+    nationality = models.ForeignKey(Nationality, null=True, blank=True, on_delete=models.SET_NULL)
 
     profile_image = models.URLField(
         max_length=500, blank=True, null=True, 

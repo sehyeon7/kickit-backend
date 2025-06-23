@@ -1,7 +1,7 @@
 from rest_framework.serializers import ModelSerializer
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import UserProfile, School, Department, AdmissionYear
+from .models import UserProfile, School, Department, AdmissionYear, Language, Nationality
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.utils.encoding import force_str, force_bytes
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
@@ -11,18 +11,29 @@ class SchoolSerializer(serializers.ModelSerializer):
         model = School
         fields = ['id', 'name']
 
-class DepartmentSerializer(serializers.ModelSerializer):
-    school_id = serializers.IntegerField(source='school.id', read_only=True)
-    school_name = serializers.CharField(source='school.name', read_only=True)
+# class DepartmentSerializer(serializers.ModelSerializer):
+#     school_id = serializers.IntegerField(source='school.id', read_only=True)
+#     school_name = serializers.CharField(source='school.name', read_only=True)
 
-    class Meta:
-        model = Department
-        fields = ['id', 'name', 'school_id', 'school_name']
+#     class Meta:
+#         model = Department
+#         fields = ['id', 'name', 'school_id', 'school_name']
 
-class AdmissionYearSerializer(serializers.ModelSerializer):
+# class AdmissionYearSerializer(serializers.ModelSerializer):
+#     class Meta:
+#         model = AdmissionYear
+#         fields = ['id', 'year']
+
+class LanguageSerializer(serializers.ModelSerializer):
     class Meta:
-        model = AdmissionYear
-        fields = ['id', 'year']
+        model = Language
+        fields = ['id', 'language']
+
+class NationalitySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Nationality
+        fields = ['id', 'name']
+
 
 
 class UserSerializer(ModelSerializer):
@@ -36,8 +47,10 @@ class UserSerializer(ModelSerializer):
 class UserProfileSerializer(ModelSerializer):
     user = UserSerializer(read_only=True)
     school_name = serializers.CharField(source='school.name', read_only=True)
-    department_name = serializers.CharField(source='department.name', read_only=True)
-    admission_year = serializers.CharField(source='admission_year.year', read_only=True)
+    # department_name = serializers.CharField(source='department.name', read_only=True)
+    # admission_year = serializers.CharField(source='admission_year.year', read_only=True)
+    language = serializers.CharField(source='language.language', read_only=True)
+    nationality = serializers.CharField(source='nationality.name', read_only=True)
     profile_image = serializers.URLField(required=False)
     is_verified = serializers.BooleanField(read_only=True)
     verification_image = serializers.SerializerMethodField()
@@ -46,10 +59,12 @@ class UserProfileSerializer(ModelSerializer):
         fields = [
             'user', 'nickname',
             'school', 'school_name',
-            'department', 'department_name', 'profile_image', 'admission_year', 
+            'profile_image', 
+            # 'admission_year', 
+            'language', 'nationality',
             'is_verified', 'verification_image'
         ]
-        read_only_fields = ['user', 'school_name', 'department_name']
+        read_only_fields = ['user', 'school_name']
 
     def get_verification_image(self, obj):
         """
@@ -64,10 +79,12 @@ class UserSignupSerializer(serializers.Serializer):
     email = serializers.EmailField()
     nickname = serializers.CharField(max_length=50)
     school = serializers.IntegerField()
-    department = serializers.IntegerField()
-    admission_year = serializers.CharField()
+    # department = serializers.IntegerField()
+    # admission_year = serializers.CharField()
     password = serializers.CharField(write_only=True, required=False)  # 일반 회원가입 용
     google_sub = serializers.CharField(write_only=True, required=False)  # 구글 로그인 용
+    language = serializers.IntegerField()
+    nationality = serializers.IntegerField()
     is_verified = serializers.BooleanField(default=False, read_only=True)
     verification_image = serializers.ListField(
         child=serializers.ImageField(allow_empty_file=False),
@@ -122,7 +139,7 @@ class NicknameCheckSerializer(serializers.Serializer):
 class ProfileUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserProfile
-        fields = ['school', 'admission_year', 'department']
+        fields = ['school', 'language', 'nationality']
 
 class PasswordResetRequestSerializer(serializers.Serializer):
     """

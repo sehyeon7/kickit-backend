@@ -3,9 +3,10 @@ from .views import (
     UserSignupView, GoogleAuthCheckView, LoginView, LogoutView,
     BlockUserView,
     NicknameCheckView, ProfileUpdateView,
-    SchoolListView, DepartmentListView,
+    SchoolListView,
     PasswordResetRequestView, TokenRefreshView, RegisterFCMTokenView,
-    VerificationStatusView, PasswordResetView, AdmissionYearListView, BlockedUsersListView
+    VerificationStatusView, PasswordResetView, BlockedUsersListView,
+    LanguageListView, NationalityListView
 )
 
 urlpatterns = [
@@ -32,8 +33,8 @@ urlpatterns = [
 
     # 학교/학과/입학연도 검색
     path('schools/', SchoolListView.as_view(), name='school-list'),
-    path('departments/', DepartmentListView.as_view(), name='department-list'),
-    path('admission_year/', AdmissionYearListView.as_view(), name='admission-year-list'),
+    # path('departments/', DepartmentListView.as_view(), name='department-list'),
+    # path('admission_year/', AdmissionYearListView.as_view(), name='admission-year-list'),
 
     # 유저 차단
     path('block/<int:user_id>/', BlockUserView.as_view(), name='block-user'),
@@ -48,4 +49,7 @@ urlpatterns = [
     path("register-fcm-token/", RegisterFCMTokenView.as_view(), name="register-fcm-token"),
 
     path("verification-status/", VerificationStatusView.as_view(), name="verification-status"),
+
+    path('languages/', LanguageListView.as_view(), name='language-list'),
+    path('nationalities/', NationalityListView.as_view(), name='nationality-list'),
 ]
