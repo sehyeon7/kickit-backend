@@ -2,6 +2,7 @@ from django.db import models
 
 # Create your models here.
 from django.contrib.auth.models import User
+from django.db.models import IntegerChoices
 
 class NotificationType(models.Model):
     """
@@ -57,3 +58,35 @@ class ContactUs(models.Model):
 
     def __str__(self):
         return f"{self.email} - {self.title} (처리됨: {self.is_resolved})"
+
+class ReportReason(IntegerChoices):
+    OTHER = 0, "기타"
+    SEXUAL = 1, "음란성 게시물"
+    SWEAR = 2, "욕설 및 차별/혐오표현"
+    COMMERCIAL = 3, "상업적 광고 및 판매"
+    AGGRO = 4, "게시판 성격에 맞지 않는 게시물"
+
+class Report(models.Model):
+    reporter = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='reports_made'  # 신고한 사람 기준
+    )
+    reported_user = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='reports_received'  # 신고당한 사람 기준
+    )
+    board_id = models.IntegerField()
+    post_id = models.IntegerField()
+    comment_id = models.IntegerField(null=True, blank=True)
+
+    reason = models.IntegerField(choices=ReportReason.choices, default=ReportReason.OTHER)
+    reason_text = models.CharField(max_length=300, blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('reporter', 'post_id', 'comment_id')

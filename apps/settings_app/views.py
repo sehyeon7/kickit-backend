@@ -2,6 +2,8 @@ from django.shortcuts import render
 
 # Create your views here.
 from rest_framework import generics, permissions, status, views
+from rest_framework.views import APIView
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django.contrib.auth.models import User
 from django.contrib.auth import update_session_auth_hash
@@ -15,7 +17,7 @@ from django.utils.decorators import method_decorator
 from django.db.models import F, Value
 from django.db.models.functions import Replace
 
-from .models import UserSetting, NotificationType, NotificationCategory, ContactUs
+from .models import UserSetting, NotificationType, NotificationCategory, ContactUs, ReportReason, Report
 from .serializers import (
     UserSettingSerializer,
     PasswordChangeSerializer, UserDeactivateSerializer,
@@ -24,6 +26,7 @@ from .serializers import (
     MyCommentSerializer
 )
 from apps.board.serializers import PostSerializer, CommentSerializer
+from django.contrib.auth.models import User
 from apps.account.models import UserProfile
 from apps.board.models import PostLike, Post, Comment
 from apps.notification.models import Notification
@@ -366,3 +369,78 @@ class MyCommentsView(generics.ListAPIView):
     def get_queryset(self):
         user = self.request.user
         return Comment.objects.filter(author=user, parent__isnull=True).prefetch_related('post__board', 'likes')
+
+class ReportPostView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        data = request.data
+        reporter = request.user
+
+        post_id = data.get("post_id")
+        board_id = data.get("board_id")
+        user_id = data.get("user_id")
+        reason_text = data.get("report_reason")
+
+        post = Post.objects.filter(id=post_id).first()
+        if not post:
+            return Response({"error": "Post not found."}, status=404)
+        if post.author == reporter:
+            return Response({"error": "You cannot report your own post."}, status=400)
+        if Report.objects.filter(reporter=reporter, post_id=post_id, comment_id__isnull=True).exists():
+            return Response({"error": "You have already reported this post."}, status=400)
+
+        reason_enum = ReportReason.OTHER  # 기본값
+        for choice in ReportReason.choices:
+            if choice[1] == reason_text:
+                reason_enum = choice[0]
+                break
+
+        Report.objects.create(
+            reporter=reporter,
+            reported_user_id=user_id,
+            board_id=board_id,
+            post_id=post_id,
+            reason=reason_enum,
+            reason_text=reason_text,
+        )
+        return Response(status=200)
+
+
+class ReportCommentView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        data = request.data
+        reporter = request.user
+
+        comment_id = data.get("comment_id")
+        post_id = data.get("post_id")
+        board_id = data.get("board_id")
+        user_id = data.get("user_id")
+        reason_text = data.get("reason")
+
+        comment = Comment.objects.filter(id=comment_id, post_id=post_id).first()
+        if not comment:
+            return Response({"error": "Comment not found."}, status=404)
+        if comment.author == reporter:
+            return Response({"error": "You cannot report your own comment."}, status=400)
+        if Report.objects.filter(reporter=reporter, post_id=post_id, comment_id=comment_id).exists():
+            return Response({"error": "You have already reported this comment."}, status=400)
+
+        reason_enum = ReportReason.OTHER
+        for choice in ReportReason.choices:
+            if choice[1] == reason_text:
+                reason_enum = choice[0]
+                break
+
+        Report.objects.create(
+            reporter=reporter,
+            reported_user_id=user_id,
+            board_id=board_id,
+            post_id=post_id,
+            comment_id=comment_id,
+            reason=reason_enum,
+            reason_text=reason_text,
+        )
+        return Response(status=200)

@@ -9,7 +9,7 @@ from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from rest_framework import serializers
 from django.conf import settings
-from .models import ContactUs
+from .models import ContactUs, Report, ReportReason
 
 DEFAULT_DELETED_USER_IMAGE = (
     f"{settings.SUPABASE_URL}"
@@ -234,3 +234,9 @@ class MyCommentSerializer(serializers.ModelSerializer):
             if not user or not user.is_authenticated:
                 return False
             return obj.likes.filter(user=user).exists()
+
+class ReportSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Report
+        fields = ['id', 'reporter', 'reported_user', 'board_id', 'post_id', 'comment_id', 'reason', 'reason_text', 'created_at']
+        read_only_fields = ['id', 'created_at', 'reporter']

@@ -4,7 +4,7 @@ from .views import (
     PasswordChangeView, UserDeactivateView,
     LikedPostsView, ScrappedPostsView, EmailUpdateView,
     NotificationTypeListView, NotificationCategoryListView, ContactUsCreateView, ContactUsListView, ProfileUpdateView,
-    MyPostsView, MyCommentsView
+    MyPostsView, MyCommentsView, ReportPostView, ReportCommentView
 )
 
 urlpatterns = [
@@ -31,4 +31,7 @@ urlpatterns = [
     path("user-profile/", ProfileUpdateView.as_view(), name="profile-update"),
     path('posts/', MyPostsView.as_view(), name='my-posts'),
     path('comments/', MyCommentsView.as_view(), name='my-comments'),
+
+    path('report/post/', ReportPostView.as_view(), name='report-post'),
+    path('report/comment/', ReportCommentView.as_view(), name='report-comment'),
 ]
