@@ -29,13 +29,14 @@ class CommentSerializer(serializers.ModelSerializer):
     like_count = serializers.SerializerMethodField()
     is_liked = serializers.SerializerMethodField()
     replies = serializers.SerializerMethodField()
+    is_deleted = serializers.BooleanField(read_only=True)
 
     class Meta:
         model = Comment
         fields = [
             'id', 'user_id', 'user_profile_image', 'user_nickname',
             'reply_target_user_nickname', 'content', 'created_at',
-            'like_count', 'is_liked', 'replies'
+            'like_count', 'is_liked', 'replies', 'is_deleted'
         ]
         read_only_fields = ['user_id', 'user_profile_image', 'user_nickname', 'reply_target_user_nickname', 'like_count', 'is_liked']
 

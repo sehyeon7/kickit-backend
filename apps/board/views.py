@@ -402,6 +402,11 @@ class CommentDeleteView(generics.DestroyAPIView):
             # 실제 삭제하지 않고 is_deleted로 표시
             comment.is_deleted = True
             comment.save()
+
+            all_replies = comment.replies.all()
+            if all_replies and all(reply.is_deleted for reply in all_replies):
+                all_replies.delete()
+                comment.delete()
         else:
             comment.delete()
 
