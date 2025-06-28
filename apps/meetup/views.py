@@ -13,12 +13,12 @@ from django.utils import timezone
 from django.shortcuts import get_object_or_404
 from django.db import transaction
 from django.db.models import Q, F, Count
-from .models import Meeting, MeetingNotice
-from .serializers import MeetingDetailSerializer, ParticipantSerializer, MeetingNoticeListSerializer
-from .pagination import MeetingCursorPagination
+from .models import Meeting, MeetingNotice, MeetingSearchHistory, MeetingQnA, MeetingQnAComment
+from .serializers import MeetingDetailSerializer, ParticipantSerializer, MeetingNoticeListSerializer, MeetingSearchHistorySerializer, MeetingQnASerializer
 from apps.account.models import Language, Nationality, School
 from django.contrib.auth.models import User
 from .supabase_utils import upload_image_to_supabase, delete_image_from_supabase
+from .pagination import MeetingCursorPagination
 
 
 class MeetingDetailView(APIView):
@@ -355,3 +355,75 @@ class ToggleMeetingLikeView(APIView):
         meeting.save()
         meeting.refresh_from_db()
         return Response({"is_liked": is_liked}, status=200)
+
+class MeetingSearchHistoryListView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        histories = MeetingSearchHistory.objects.filter(user=request.user)
+        serializer = MeetingSearchHistorySerializer(histories, many=True)
+        return Response(serializer.data, status=200)
+
+class MeetingSearchHistoryDeleteView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request, history_id):
+        history = get_object_or_404(MeetingSearchHistory, id=history_id, user=request.user)
+        history.delete()
+        return Response(status=204)
+
+class MeetingSearchHistoryDeleteAllView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request):
+        MeetingSearchHistory.objects.filter(user=request.user).delete()
+        return Response(status=204)
+
+class CreateMeetingQnAView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, meeting_id):
+        meeting = get_object_or_404(Meeting, id=meeting_id)
+        user = request.user
+
+        if not meeting.participants.filter(id=user.id).exists():
+            return Response({"error": "Only participants can post Q&A."}, status=403)
+
+        content = request.data.get("content")
+        if not content:
+            return Response({"error": "Missing content."}, status=400)
+
+        MeetingQnA.objects.create(meeting=meeting, author=user, content=content)
+        return Response(status=201)
+
+class CreateMeetingQnACommentView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, qna_id):
+        qna = get_object_or_404(MeetingQnA, id=qna_id)
+        user = request.user
+
+        if user != qna.author and user != qna.meeting.creator:
+            return Response({"error": "You are not allowed to comment."}, status=403)
+
+        content = request.data.get("content")
+        if not content:
+            return Response({"error": "Missing content."}, status=400)
+
+        MeetingQnAComment.objects.create(qna=qna, author=user, content=content)
+        return Response(status=201)
+
+class MeetingQnAListView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, meeting_id):
+        meeting = get_object_or_404(Meeting, id=meeting_id)
+        user = request.user
+
+        if user == meeting.creator:
+            qnas = meeting.qnas.all().order_by('-created_at')
+        else:
+            qnas = meeting.qnas.filter(author=user).order_by('-created_at')
+
+        serializer = MeetingQnASerializer(qnas, many=True)
+        return Response(serializer.data, status=200)

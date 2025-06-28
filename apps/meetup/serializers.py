@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Meeting, MeetingNotice
+from .models import Meeting, MeetingNotice, MeetingSearchHistory, MeetingQnA, MeetingQnAComment
 
 class ParticipantSerializer(serializers.Serializer):
     user_id = serializers.IntegerField(source='id')
@@ -71,3 +71,28 @@ class MeetingNoticeListSerializer(serializers.ModelSerializer):
     class Meta:
         model = MeetingNotice
         fields = ['id', 'content', 'created_at']
+
+class MeetingSearchHistorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = MeetingSearchHistory
+        fields = ['id', 'keyword']
+
+class MeetingQnACommentSerializer(serializers.ModelSerializer):
+    user_id = serializers.IntegerField(source="author.id", read_only=True)
+    user_nickname = serializers.CharField(source="author.profile.nickname", read_only=True)
+    user_profile_image = serializers.CharField(source="author.profile.profile_image", read_only=True)
+
+    class Meta:
+        model = MeetingQnAComment
+        fields = ["id", "user_id", "user_nickname", "user_profile_image", "content", "created_at"]
+
+class MeetingQnASerializer(serializers.ModelSerializer):
+    user_id = serializers.IntegerField(source="author.id", read_only=True)
+    user_nickname = serializers.CharField(source="author.profile.nickname", read_only=True)
+    user_profile_image = serializers.CharField(source="author.profile.profile_image", read_only=True)
+    comments = MeetingQnACommentSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = MeetingQnA
+        fields = ["id", "user_id", "user_nickname", "user_profile_image", "content", "created_at", "comments"]
+

@@ -62,3 +62,21 @@ class MeetingNotice(models.Model):
     author = models.ForeignKey(User, on_delete=models.CASCADE)
     content = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
+
+
+class MeetingSearchHistory(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="meeting_search_histories")
+    keyword = models.CharField(max_length=255)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+class MeetingQnA(models.Model):
+    meeting = models.ForeignKey(Meeting, on_delete=models.CASCADE, related_name="qnas")
+    author = models.ForeignKey(User, on_delete=models.CASCADE)
+    content = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+class MeetingQnAComment(models.Model):
+    qna = models.ForeignKey(MeetingQnA, on_delete=models.CASCADE, related_name="comments")
+    author = models.ForeignKey(User, on_delete=models.CASCADE)
+    content = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
