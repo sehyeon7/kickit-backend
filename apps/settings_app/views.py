@@ -484,3 +484,45 @@ class ReportProfileView(APIView):
             reason_text=reason_text
         )
         return Response(status=200)
+
+class ReportMeetingView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        user = request.user
+        meeting_id = request.data.get("meeting_id")
+        reason_text = request.data.get("report_reason")
+
+        if not meeting_id or not reason_text:
+            return Response({"error": "meeting_id and report_reason are required."}, status=400)
+
+        from apps.meetup.models import Meeting
+        meeting = get_object_or_404(Meeting, id=meeting_id)
+
+        if meeting.creator == user:
+            return Response({"error": "You cannot report your own meeting."}, status=400)
+
+        already_reported = Report.objects.filter(
+            reporter=user,
+            meeting_id=meeting_id
+        ).exists()
+        if already_reported:
+            return Response({"error": "You have already reported this meeting."}, status=400)
+
+        reason_enum = ReportReason.OTHER
+        for choice in ReportReason.choices:
+            if choice[1] == reason_text:
+                reason_enum = choice[0]
+                break
+
+        Report.objects.create(
+            reporter=user,
+            reported_user=meeting.creator,
+            board_id=0, post_id=0, comment_id=None,
+            meeting_id=meeting_id,
+            reason=reason_enum,
+            reason_text=reason_text
+        )
+
+        return Response(status=200)
+

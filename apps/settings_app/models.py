@@ -82,6 +82,7 @@ class Report(models.Model):
     board_id = models.IntegerField()
     post_id = models.IntegerField()
     comment_id = models.IntegerField(null=True, blank=True)
+    meeting_id = models.IntegerField(default=0)
 
     reason = models.IntegerField(choices=ReportReason.choices, default=ReportReason.OTHER)
     reason_text = models.CharField(max_length=300, blank=True)
@@ -89,4 +90,4 @@ class Report(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        unique_together = ('reporter', 'post_id', 'comment_id')
+        unique_together = ('reporter', 'post_id', 'comment_id', 'meeting_id')
