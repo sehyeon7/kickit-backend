@@ -75,7 +75,11 @@ class JoinMeetingView(APIView):
         user = request.user
 
         if meeting.participants.filter(id=user.id).exists():
-            return Response({"error": "You have already joined this event."}, status=status.HTTP_400_BAD_REQUEST)
+            # 시작 시간이 지나면 취소 불가
+            if meeting.is_ended():
+                return Response({"error": "You cannot leave the event after it has started."}, status=403)
+            meeting.participants.remove(user)
+            return Response({"message": "Successfully left the event."}, status=200)
 
         if meeting.is_closed():
             return Response({"error": "The event is full."}, status=status.HTTP_400_BAD_REQUEST)
@@ -98,6 +102,12 @@ class JoinMeetingView(APIView):
                 )
 
         meeting.participants.add(user)
+
+        # 마지막 한 명이 참여한 경우 → 종료 상태 처리
+        if meeting.participants.count() >= meeting.capacity:
+            # is_closed()는 메서드이므로 모델 필드 아님 → 필요한 경우 별도 필드 추가해야 함
+            pass
+
         return Response({"message": "Successfully joined the event."}, status=200)
 
 class CreateMeetingView(CreateAPIView):
