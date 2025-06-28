@@ -2,6 +2,7 @@ from django.shortcuts import render
 
 # Create your views here.
 from rest_framework.views import APIView
+from django.db import models
 from rest_framework.generics import ListAPIView, CreateAPIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
@@ -10,10 +11,11 @@ from rest_framework import status
 from django.utils import timezone
 from django.shortcuts import get_object_or_404
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import Q, F, Count
 from .models import Meeting
 from .serializers import MeetingDetailSerializer
 from .pagination import MeetingCursorPagination
+from apps.account.models import Language, Nationality, School
 
 class MeetingDetailView(APIView):
     permission_classes = [IsAuthenticated]
@@ -29,7 +31,12 @@ class MeetingListView(ListAPIView):
     pagination_class = MeetingCursorPagination
 
     def get_queryset(self):
-        queryset = Meeting.objects.filter(start_time__gte=timezone.now())
+        queryset = Meeting.objects.annotate(
+            num_participants=models.Count("participants")
+        ).filter(
+            start_time__gte=timezone.now(),
+            num_participants__lt=F("capacity")
+        )
 
         rlg = self.request.query_params.get("rlg")
         if rlg:
@@ -62,7 +69,9 @@ class MeetingListView(ListAPIView):
 
         school_id = self.request.query_params.get("school_id")
         if school_id:
-            queryset = queryset.filter(creator__profile__school_id=school_id)
+            queryset = queryset.filter(
+                Q(schools__id=school_id) | Q(schools__isnull=True)
+            )
 
         return queryset.order_by("-like_count", "start_time")
 
@@ -100,6 +109,10 @@ class JoinMeetingView(APIView):
                     {"error": "You do not meet the required nationality criteria."},
                     status=status.HTTP_403_FORBIDDEN
                 )
+        
+        if meeting.schools.exists():
+            if not meeting.schools.filter(id=user.profile.school_id).exists():
+                return Response({"error": "You do not meet the required school criteria."}, status=403)
 
         meeting.participants.add(user)
 
@@ -121,3 +134,26 @@ class CreateMeetingView(CreateAPIView):
         
         meeting = serializer.save(creator=self.request.user)
         meeting.participants.add(self.request.user)
+
+        data = self.request.data
+
+        # languages 처리
+        if data.getlist("languages") == ["all"]:
+            meeting.languages.clear()
+        else:
+            lang_ids = Language.objects.filter(id__in=data.getlist("languages"))
+            meeting.languages.set(lang_ids)
+
+        # nationalities 처리
+        if data.getlist("nationalities") == ["all"]:
+            meeting.nationalities.clear()
+        else:
+            nat_ids = Nationality.objects.filter(id__in=data.getlist("nationalities"))
+            meeting.nationalities.set(nat_ids)
+
+        # schools 처리
+        if data.getlist("school_ids") == ["all"]:
+            meeting.schools.clear()
+        else:
+            school_ids = School.objects.filter(id__in=data.getlist("school_ids"))
+            meeting.schools.set(school_ids)

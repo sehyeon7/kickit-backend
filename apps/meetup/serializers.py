@@ -17,12 +17,13 @@ class MeetingDetailSerializer(serializers.ModelSerializer):
     participants = serializers.SerializerMethodField()
     languages = serializers.SlugRelatedField(slug_field="language", many=True, read_only=True)
     nationalities = serializers.SlugRelatedField(slug_field="name", many=True, read_only=True)
+    school_ids = serializers.SlugRelatedField(slug_field="name", many=True, read_only=True)
 
     class Meta:
         model = Meeting
         fields = [
             'id', 'title', 'start_time', 'location', 'capacity',
-            'languages', 'nationalities', 'category_id', 'description', 'thumbnails',
+            'languages', 'nationalities', 'school_ids', 'category_id', 'description', 'thumbnails',
             'is_closed', 'is_ended', 'is_liked', 'creator', 'participants',
             'is_creator', 'is_participant'
         ]

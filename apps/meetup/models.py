@@ -2,7 +2,7 @@
 from django.db import models
 from django.contrib.auth.models import User
 from django.utils import timezone
-from apps.account.models import Language, Nationality
+from apps.account.models import Language, Nationality, School
 
 class RLG(models.TextChoices):
     SEOUL = "Seoul"
@@ -45,6 +45,7 @@ class Meeting(models.Model):
     thumbnails = models.JSONField(default=list)
     languages = models.ManyToManyField(Language)
     nationalities = models.ManyToManyField(Nationality)
+    school_ids = models.ManyToManyField(School, blank=True)
     participants = models.ManyToManyField(User, related_name="joined_meetings", blank=True)
 
     def is_closed(self):
