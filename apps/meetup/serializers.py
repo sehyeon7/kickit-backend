@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Meeting
+from .models import Meeting, MeetingNotice
 
 class ParticipantSerializer(serializers.Serializer):
     user_id = serializers.IntegerField(source='id')
@@ -18,6 +18,7 @@ class MeetingDetailSerializer(serializers.ModelSerializer):
     languages = serializers.SlugRelatedField(slug_field="language", many=True, read_only=True)
     nationalities = serializers.SlugRelatedField(slug_field="name", many=True, read_only=True)
     school_ids = serializers.SlugRelatedField(slug_field="name", many=True, read_only=True)
+    thumbnails = serializers.ListField(child=serializers.URLField(), required=False)
 
     class Meta:
         model = Meeting
@@ -25,7 +26,7 @@ class MeetingDetailSerializer(serializers.ModelSerializer):
             'id', 'title', 'start_time', 'location', 'capacity',
             'languages', 'nationalities', 'school_ids', 'category_id', 'description', 'thumbnails',
             'is_closed', 'is_ended', 'is_liked', 'creator', 'participants',
-            'is_creator', 'is_participant'
+            'is_creator', 'is_participant', 'thumbnails'
         ]
 
     def get_location(self, obj):
@@ -44,7 +45,8 @@ class MeetingDetailSerializer(serializers.ModelSerializer):
         return obj.is_ended()
 
     def get_is_liked(self, obj):
-        return False  # TODO: 좋아요 구현 시 변경
+        user = self.context["request"].user
+        return obj.liked_users.filter(id=user.id).exists()
 
     def get_is_creator(self, obj):
         user = self.context['request'].user
@@ -58,3 +60,14 @@ class MeetingDetailSerializer(serializers.ModelSerializer):
 
     def get_participants(self, obj):
         return ParticipantSerializer(obj.participants.all(), many=True).data
+
+
+class MeetingNoticeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = MeetingNotice
+        fields = ['id', 'content', 'created_at']
+
+class MeetingNoticeListSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = MeetingNotice
+        fields = ['id', 'content', 'created_at']

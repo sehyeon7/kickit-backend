@@ -48,9 +48,17 @@ class Meeting(models.Model):
     school_ids = models.ManyToManyField(School, blank=True)
     participants = models.ManyToManyField(User, related_name="joined_meetings", blank=True)
     is_closed_manual = models.BooleanField(default=False)
+    liked_users = models.ManyToManyField(User, related_name="liked_meetings", blank=True)
 
     def is_closed(self):
         return self.participants.count() >= self.capacity or self.is_closed_manual
 
     def is_ended(self):
         return self.start_time < timezone.now()
+
+
+class MeetingNotice(models.Model):
+    meeting = models.ForeignKey("Meeting", on_delete=models.CASCADE, related_name="notices")
+    author = models.ForeignKey(User, on_delete=models.CASCADE)
+    content = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
