@@ -3,6 +3,7 @@ from django.shortcuts import render
 # Create your views here.
 from rest_framework.views import APIView
 from django.db import models
+import json
 from rest_framework.generics import ListAPIView, CreateAPIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
@@ -12,11 +13,12 @@ from django.utils import timezone
 from django.shortcuts import get_object_or_404
 from django.db import transaction
 from django.db.models import Q, F, Count
-from .models import Meeting
-from .serializers import MeetingDetailSerializer, ParticipantSerializer
+from .models import Meeting, MeetingNotice
+from .serializers import MeetingDetailSerializer, ParticipantSerializer, MeetingNoticeListSerializer
 from .pagination import MeetingCursorPagination
 from apps.account.models import Language, Nationality, School
 from django.contrib.auth.models import User
+from .supabase_utils import upload_image_to_supabase, delete_image_from_supabase
 
 
 class MeetingDetailView(APIView):
@@ -112,7 +114,7 @@ class JoinMeetingView(APIView):
                     status=status.HTTP_403_FORBIDDEN
                 )
         
-        if meeting.schools.exists():
+        if meeting.school_ids.exists():
             if not meeting.schools.filter(id=user.profile.school_id).exists():
                 return Response({"error": "You do not meet the required school criteria."}, status=403)
 
@@ -159,6 +161,17 @@ class CreateMeetingView(CreateAPIView):
         else:
             school_ids = School.objects.filter(id__in=data.getlist("school_ids"))
             meeting.schools.set(school_ids)
+        # 썸네일 이미지 업로드 및 저장
+        from .supabase_utils import upload_image_to_supabase
+        new_files = self.request.FILES.getlist("new_images")
+        thumbnail_urls = []
+
+        for file in new_files:
+            uploaded_url = upload_image_to_supabase(file)
+            if uploaded_url:
+                thumbnail_urls.append(uploaded_url)
+        meeting.thumbnails = thumbnail_urls
+        meeting.save()
 
 class ToggleMeetingCloseView(APIView):
     permission_classes = [IsAuthenticated]
@@ -221,3 +234,124 @@ class KickParticipantView(APIView):
 
         meeting.participants.remove(remove_user)
         return Response(status=200)
+
+class UpdateMeetingView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def patch(self, request, meeting_id):
+        meeting = get_object_or_404(Meeting, id=meeting_id)
+
+        if meeting.creator != request.user:
+            return Response({"error": "You are not the creator."}, status=403)
+
+        title = request.data.get("title")
+        description = request.data.get("description")
+        existing_images_raw = request.data.get("existing_images")
+        if isinstance(existing_images_raw, str):
+            try:
+                existing_images = json.loads(existing_images_raw)
+            except:
+                existing_images = []
+        elif isinstance(existing_images_raw, list):
+            existing_images = existing_images_raw
+        else:
+            existing_images = []
+
+        new_files = request.FILES.getlist("new_images")
+        current_images = meeting.thumbnails or []
+        to_delete = set(current_images) - set(existing_images)
+        for url in to_delete:
+            delete_image_from_supabase(url)
+
+        new_urls = []
+        for file in new_files:
+            uploaded = upload_image_to_supabase(file)
+            if uploaded:
+                new_urls.append(uploaded)
+
+        meeting.title = title
+        meeting.description = description
+        meeting.thumbnails = existing_images + new_urls
+        meeting.save()
+
+        return Response(MeetingDetailSerializer(meeting, context={"request": request}).data, status=200)
+
+class DeleteMeetingView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request, meeting_id):
+        meeting = get_object_or_404(Meeting, id=meeting_id)
+
+        if meeting.creator != request.user:
+            return Response({"error": "You are not the creator."}, status=403)
+
+        if meeting.is_ended():
+            return Response({"error": "You cannot delete a past meeting."}, status=400)
+
+        if meeting.participants.exclude(id=request.user.id).exists():
+            return Response({"error": "Other participants exist."}, status=400)
+        
+        for url in meeting.thumbnails:
+            delete_image_from_supabase(url)
+
+        meeting.delete()
+        return Response(status=204)
+
+class CreateMeetingNoticeView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, meeting_id):
+        meeting = get_object_or_404(Meeting, id=meeting_id)
+        if meeting.creator != request.user:
+            return Response({"error": "Only creator can write notice."}, status=403)
+
+        content = request.data.get("content")
+        MeetingNotice.objects.create(meeting=meeting, author=request.user, content=content)
+        return Response(status=201)
+
+class ListMeetingNoticesView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, meeting_id):
+        meeting = get_object_or_404(Meeting, id=meeting_id)
+        notices = meeting.notices.all().order_by('-created_at')
+        return Response({
+            "author": {
+                "id": meeting.creator.id,
+                "nickname": meeting.creator.profile.nickname,
+                "profile_image": meeting.creator.profile.profile_image
+            },
+            "notices": MeetingNoticeListSerializer(notices, many=True).data
+        }, status=200)
+
+class DeleteMeetingNoticeView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request, meeting_id, notice_id):
+        meeting = get_object_or_404(Meeting, id=meeting_id)
+        notice = get_object_or_404(MeetingNotice, id=notice_id, meeting=meeting)
+
+        if notice.author != request.user:
+            return Response({"error": "Only author can delete."}, status=403)
+
+        notice.delete()
+        return Response(status=204)
+
+class ToggleMeetingLikeView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, meeting_id):
+        meeting = get_object_or_404(Meeting, id=meeting_id)
+        user = request.user
+
+        if hasattr(meeting, 'liked_users') and user in meeting.liked_users.all():
+            meeting.liked_users.remove(user)
+            meeting.like_count = F("like_count") - 1
+            is_liked = False
+        else:
+            meeting.liked_users.add(user)
+            meeting.like_count = F("like_count") + 1
+            is_liked = True
+        meeting.save()
+        meeting.refresh_from_db()
+        return Response({"is_liked": is_liked}, status=200)
