@@ -156,7 +156,7 @@ class UserSignupView(APIView):
         email = data["email"]
         nickname = data["nickname"]
         school_id = data["school"]
-        language_id = data["language"]
+        language_ids = data["languages"]
         nationality_id = data["nationality"]
         # department_id = data["department"]
         # admission_year = data["admission_year"]
@@ -172,7 +172,7 @@ class UserSignupView(APIView):
         # if not year_obj:
         #     return Response({"error": "Invalid admission year."}, status=400)
 
-        language = get_object_or_404(Language, id=language_id)
+        languages = Language.objects.filter(id__in=language_ids)
         nationality = get_object_or_404(Nationality, id=nationality_id)
 
         if User.objects.filter(email=email).exists():
@@ -226,13 +226,13 @@ class UserSignupView(APIView):
             user.set_unusable_password()
         user.save()
 
-        UserProfile.objects.create(
+        user_profile = UserProfile.objects.create(
             user=user, google_sub=google_sub, nickname=nickname,
             school_id=school_id,
-            language=language,
             nationality=nationality,
             is_verified=is_verified, verification_image=image_urls
         )
+        user_profile.languages.set(languages)
 
         user.refresh_from_db()
         print(f"User refreshed: {user.id}, {user.email}")

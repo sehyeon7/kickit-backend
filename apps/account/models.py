@@ -56,7 +56,7 @@ class UserProfile(models.Model):
     department = models.ForeignKey(Department, null=True, blank=True, on_delete=models.SET_NULL)
     admission_year = models.ForeignKey(AdmissionYear, null=True, blank=True, on_delete=models.SET_NULL)
     nickname = models.CharField(max_length=50, blank=True)
-    language = models.ForeignKey(Language, null=True, blank=True, on_delete=models.SET_NULL)
+    languages = models.ManyToManyField(Language, blank=True)
     nationality = models.ForeignKey(Nationality, null=True, blank=True, on_delete=models.SET_NULL)
     introduce = models.CharField(max_length=200, blank=True, default="")
 

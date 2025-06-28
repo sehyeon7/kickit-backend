@@ -49,7 +49,7 @@ class UserProfileSerializer(ModelSerializer):
     school_name = serializers.CharField(source='school.name', read_only=True)
     # department_name = serializers.CharField(source='department.name', read_only=True)
     # admission_year = serializers.CharField(source='admission_year.year', read_only=True)
-    language = serializers.CharField(source='language.language', read_only=True)
+    languages = serializers.SerializerMethodField()
     nationality = serializers.CharField(source='nationality.name', read_only=True)
     profile_image = serializers.URLField(required=False)
     is_verified = serializers.BooleanField(read_only=True)
@@ -61,7 +61,7 @@ class UserProfileSerializer(ModelSerializer):
             'school', 'school_name',
             'profile_image', 
             # 'admission_year', 
-            'language', 'nationality',
+            'languages', 'nationality',
             'is_verified', 'verification_image'
         ]
         read_only_fields = ['user', 'school_name']
@@ -71,6 +71,9 @@ class UserProfileSerializer(ModelSerializer):
         인증 이미지를 리스트 형태로 반환
         """
         return obj.verification_image if isinstance(obj.verification_image, list) else []
+    
+    def get_language(self, obj):
+        return [lang.language for lang in obj.languages.all()]
 
 class UserSignupSerializer(serializers.Serializer):
     """
@@ -83,14 +86,29 @@ class UserSignupSerializer(serializers.Serializer):
     # admission_year = serializers.CharField()
     password = serializers.CharField(write_only=True, required=False)  # 일반 회원가입 용
     google_sub = serializers.CharField(write_only=True, required=False)  # 구글 로그인 용
-    language = serializers.IntegerField()
-    nationality = serializers.IntegerField()
+    languages = serializers.CharField()
+    nationality = serializers.CharField()
     is_verified = serializers.BooleanField(default=False, read_only=True)
     verification_image = serializers.ListField(
         child=serializers.ImageField(allow_empty_file=False),
         write_only=True,
         required=False
     )
+
+    def validate_languages(self, value):
+        try:
+            ids = [int(i) for i in value.split(',') if i.strip().isdigit()]
+            if not ids:
+                raise serializers.ValidationError("Invalid languages input.")
+            return ids
+        except Exception:
+            raise serializers.ValidationError("Invalid languages input.")
+    
+    def validate_nationality(self, value):
+        try:
+            return int(value)
+        except ValueError:
+            raise serializers.ValidationError("Invalid nationality input.")
 
 class GoogleLoginSerializer(serializers.Serializer):
     id_token = serializers.CharField(write_only=True)
