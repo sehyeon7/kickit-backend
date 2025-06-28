@@ -47,9 +47,10 @@ class Meeting(models.Model):
     nationalities = models.ManyToManyField(Nationality)
     school_ids = models.ManyToManyField(School, blank=True)
     participants = models.ManyToManyField(User, related_name="joined_meetings", blank=True)
+    is_closed_manual = models.BooleanField(default=False)
 
     def is_closed(self):
-        return self.participants.count() >= self.capacity
+        return self.participants.count() >= self.capacity or self.is_closed_manual
 
     def is_ended(self):
         return self.start_time < timezone.now()

@@ -13,9 +13,11 @@ from django.shortcuts import get_object_or_404
 from django.db import transaction
 from django.db.models import Q, F, Count
 from .models import Meeting
-from .serializers import MeetingDetailSerializer
+from .serializers import MeetingDetailSerializer, ParticipantSerializer
 from .pagination import MeetingCursorPagination
 from apps.account.models import Language, Nationality, School
+from django.contrib.auth.models import User
+
 
 class MeetingDetailView(APIView):
     permission_classes = [IsAuthenticated]
@@ -157,3 +159,65 @@ class CreateMeetingView(CreateAPIView):
         else:
             school_ids = School.objects.filter(id__in=data.getlist("school_ids"))
             meeting.schools.set(school_ids)
+
+class ToggleMeetingCloseView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, meeting_id):
+        meeting = get_object_or_404(Meeting, id=meeting_id)
+        user = request.user
+
+        if meeting.creator != user:
+            return Response({"error": "You are not the creator of this meeting."}, status=403)
+
+        if meeting.is_ended():
+            return Response({"error": "The meeting has already ended."}, status=400)
+
+        meeting.is_closed_manual = not meeting.is_closed_manual
+        meeting.save()
+
+        return Response(status=200)
+
+class MeetingParticipantsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, meeting_id):
+        meeting = get_object_or_404(Meeting, id=meeting_id)
+
+        creator_data = ParticipantSerializer(meeting.creator).data
+        participants_data = ParticipantSerializer(
+            meeting.participants.exclude(id=meeting.creator.id), many=True
+        ).data
+
+        return Response({
+            "creator": creator_data,
+            "participants": participants_data
+        }, status=200)
+
+class KickParticipantView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, meeting_id):
+        meeting = get_object_or_404(Meeting, id=meeting_id)
+        user = request.user
+
+        if meeting.creator != user:
+            return Response({"error": "You are not the creator of this meeting."}, status=403)
+
+        if meeting.is_ended():
+            return Response({"error": "The meeting has already ended."}, status=400)
+
+        remove_user_id = request.data.get("remove_user_id")
+        if not remove_user_id:
+            return Response({"error": "Missing 'remove_user_id'"}, status=400)
+
+        if int(remove_user_id) == user.id:
+            return Response({"error": "You cannot remove yourself."}, status=400)
+
+        remove_user = get_object_or_404(User, id=remove_user_id)
+
+        if not meeting.participants.filter(id=remove_user.id).exists():
+            return Response({"error": "User is not a participant."}, status=400)
+
+        meeting.participants.remove(remove_user)
+        return Response(status=200)
