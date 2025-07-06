@@ -72,7 +72,7 @@ class UserProfileSerializer(ModelSerializer):
         """
         return obj.verification_image if isinstance(obj.verification_image, list) else []
     
-    def get_language(self, obj):
+    def get_languages(self, obj):
         return [lang.language for lang in obj.languages.all()]
 
 class UserSignupSerializer(serializers.Serializer):
