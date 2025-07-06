@@ -33,6 +33,14 @@ from apps.notification.models import Notification
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.exceptions import TokenError
 
+from apps.meetup.serializers import MeetingDetailSerializer
+from apps.meetup.models import Meeting
+from apps.meetup.pagination import MeetingCursorPagination
+
+from django.utils import timezone
+from rest_framework.generics import ListAPIView
+
+
 class UserSettingDetailView(generics.RetrieveUpdateAPIView):
     """
     GET/PUT: 알림 설정 조회/변경
@@ -547,3 +555,35 @@ class MeetupNotificationSettingView(APIView):
         setting.save()
 
         return Response({"meetup_notification": setting.meetup_notification}, status=200)
+
+class LikedMeetingsView(ListAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = MeetingDetailSerializer
+    pagination_class = MeetingCursorPagination
+
+    def get_queryset(self):
+        return Meeting.objects.filter(
+            liked_users=self.request.user
+        ).order_by("-start_time")
+
+class UpcomingMeetingsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        meetings = Meeting.objects.filter(
+            participants=request.user,
+            start_time__gte=timezone.now()
+        ).order_by("-start_time")
+        serializer = MeetingDetailSerializer(meetings, many=True, context={"request": request})
+        return Response(serializer.data, status=200)
+    
+class PastMeetingsView(ListAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = MeetingDetailSerializer
+    pagination_class = MeetingCursorPagination
+
+    def get_queryset(self):
+        return Meeting.objects.filter(
+            participants=self.request.user,
+            start_time__lt=timezone.now()
+        ).order_by("-start_time")

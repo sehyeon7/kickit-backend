@@ -5,7 +5,7 @@ from .views import (
     LikedPostsView, ScrappedPostsView, EmailUpdateView,
     NotificationTypeListView, NotificationCategoryListView, ContactUsCreateView, ContactUsListView, ProfileUpdateView,
     MyPostsView, MyCommentsView, ReportPostView, ReportCommentView, ReportProfileView, ReportMeetingView,
-    MeetupNotificationSettingView
+    MeetupNotificationSettingView, LikedMeetingsView, UpcomingMeetingsView, PastMeetingsView
 )
 
 urlpatterns = [
@@ -38,4 +38,7 @@ urlpatterns = [
     path('report/profile/', ReportProfileView.as_view(), name='report-profile'),
     path('report/meeting/', ReportMeetingView.as_view(), name='report-meeting'),
     path('user/meetup-notification/', MeetupNotificationSettingView.as_view(), name='meetup-notification-setting'),
+    path("meetup/liked/", LikedMeetingsView.as_view(), name="meeting-liked"),
+    path("meetup/upcoming/", UpcomingMeetingsView.as_view(), name="meeting-upcoming"),
+    path("meetup/past/", PastMeetingsView.as_view(), name="meeting-past"),
 ]
