@@ -209,3 +209,142 @@ def send_verification_failure_email(user):
         recipient_list=[user.email],
         fail_silently=False,
     )
+
+def send_meeting_notification(user, title, message, meetup_id=None, notice_id=None, question_id=None, comment_id=None, sender=None):
+    """
+    이벤트 관련 알림 (In-app + Push)
+    """
+    if sender == user:
+        return
+
+    user_setting = UserSetting.objects.filter(user=user).first()
+    if not user_setting or not user_setting.meetup_notification:
+        return
+
+    # 중복 방지
+    if Notification.objects.filter(
+        user=user,
+        sender=sender,
+        title=title,
+        meetup_id=meetup_id,
+        notice_id=notice_id,
+        question_id=question_id,
+        comment_id=comment_id,
+    ).exists():
+        return
+
+    Notification.objects.create(
+        user=user,
+        sender=sender,
+        title=title,
+        message=message,
+        meetup_id=meetup_id,
+        notice_id=notice_id,
+        question_id=question_id,
+        comment_id=comment_id,
+    )
+
+    try:
+        send_push_notification_async.delay(user.id, title, message)
+    except Exception as e:
+        print(f"[WARNING] 이벤트 푸시 전송 실패: {e}")
+
+def handle_join_meeting_notification(meeting, participant):
+    """
+    - 누군가 meetup에 참여하면 호스트에게 알림 전송
+    - 본인이 본인 meetup에 참여 시 알림 생략
+    """
+    if meeting.creator == participant:
+        return
+
+    send_meeting_notification(
+        user=meeting.creator,
+        sender=participant,
+        title="Someone Joined Your Meetup!",
+        message=f"{participant.profile.nickname} has joined \"{meeting.title}\".",
+        meetup_id=meeting.id
+    )
+
+def handle_notice_created_notification(notice):
+    """
+    - meetup 공지 생성 시, 모든 참여자에게 알림 (호스트 제외)
+    """
+    meeting = notice.meeting
+    sender = meeting.creator
+    participants = meeting.participants.exclude(id=sender.id)
+
+    for user in participants:
+        send_meeting_notification(
+            user=user,
+            sender=sender,
+            title="New Update for Your Meetup",
+            message=f"The host added a new notice to \"{meeting.title}\".",
+            meetup_id=meeting.id,
+            notice_id=notice.id
+        )
+
+def handle_question_notification(qna):
+    """
+    - 참여자가 QnA 등록 시, 호스트에게 알림
+    """
+    send_meeting_notification(
+        user=qna.meeting.creator,
+        sender=qna.author,
+        title="New Question for Your Meetup",
+        message=f"{qna.author.profile.nickname} asked a question in \"{qna.meeting.title}\".",
+        meetup_id=qna.meeting.id,
+        question_id=qna.id
+    )
+
+def handle_qna_comment_notification(comment):
+    """
+    - QnA 댓글 등록 시, 질문자 또는 호스트에게 알림
+    """
+    qna = comment.qna
+    sender = comment.author
+    receiver = qna.author if sender == qna.meeting.creator else qna.meeting.creator
+
+    send_meeting_notification(
+        user=receiver,
+        sender=sender,
+        title="New Comment in the Q&A",
+        message=f"{sender.profile.nickname} commented on Q&A in \"{qna.meeting.title}\".",
+        meetup_id=qna.meeting.id,
+        question_id=qna.id,
+        comment_id=comment.id
+    )
+
+def handle_meeting_reminder_notification(meeting):
+    """
+    - 24시간 전 자동 알림: 호스트 + 모든 참여자
+    """
+    for user in meeting.participants.all():
+        send_meeting_notification(
+            user=user,
+            sender=None,
+            title="Your Meetup Is Coming Up Soon!",
+            message=f"\"{meeting.title}\" starts in 24 hours!",
+            meetup_id=meeting.id
+        )
+    
+    send_meeting_notification(
+        user=meeting.creator,
+        sender=None,
+        title="Your Meetup Is Coming Up Soon!",
+        message=f"\"{meeting.title}\" starts in 24 hours!",
+        meetup_id=meeting.id
+    )
+
+def handle_kick_participant_notification(meeting, removed_user):
+    """
+    - 호스트가 유저를 내보내면 해당 유저에게 알림 전송
+    """
+    send_meeting_notification(
+        user=removed_user,
+        sender=meeting.creator,
+        title="RSVP canceled",
+        message=f"Your participation in \"{meeting.title}\" has been canceled by the host.",
+        meetup_id=meeting.id
+    )
+
+

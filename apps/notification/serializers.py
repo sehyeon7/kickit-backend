@@ -29,3 +29,17 @@ class NotificationSerializer(serializers.ModelSerializer):
     
     def get_sender_nickname(self, obj):
         return obj.sender.profile.nickname if obj.sender else "System"
+
+class MeetupNotificationSerializer(serializers.ModelSerializer):
+    profile_image = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Notification
+        fields = [
+            "id", "title", "message", "is_read", "created_at",
+            "meetup_id", "notice_id", "question_id", "comment_id", "profile_image"
+        ]
+
+    def get_profile_image(self, obj):
+        profile = getattr(obj.sender, 'profile', None)
+        return profile.profile_image if profile and profile.profile_image else DEFAULT_PROFILE_IMAGE

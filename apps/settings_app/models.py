@@ -41,6 +41,7 @@ class UserSetting(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     notification_type = models.ManyToManyField(NotificationType,blank=True)
     notification_categories = models.ManyToManyField(NotificationCategory, blank=True)
+    meetup_notification = models.BooleanField(default=True)
 
     def __str__(self):
         return f"{self.user.username}'s Settings"

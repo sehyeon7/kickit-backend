@@ -526,3 +526,24 @@ class ReportMeetingView(APIView):
 
         return Response(status=200)
 
+class MeetupNotificationSettingView(APIView):
+    """
+    GET/PUT: 이벤트 알림 수신 설정 조회 및 수정
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        setting, _ = UserSetting.objects.get_or_create(user=request.user)
+        return Response({"meetup_notification": setting.meetup_notification}, status=200)
+
+    def put(self, request):
+        value = request.data.get("meetup_notification")
+
+        if not isinstance(value, bool):
+            return Response({"error": "Invalid value. Expected boolean."}, status=400)
+
+        setting, _ = UserSetting.objects.get_or_create(user=request.user)
+        setting.meetup_notification = value
+        setting.save()
+
+        return Response({"meetup_notification": setting.meetup_notification}, status=200)

@@ -20,6 +20,13 @@ from django.contrib.auth.models import User
 from .supabase_utils import upload_image_to_supabase, delete_image_from_supabase
 from .pagination import MeetingCursorPagination
 
+from apps.notification.utils import (
+    handle_join_meeting_notification,
+    handle_notice_created_notification,
+    handle_question_notification,
+    handle_qna_comment_notification, 
+    handle_kick_participant_notification
+)
 
 class MeetingDetailView(APIView):
     permission_classes = [IsAuthenticated]
@@ -119,6 +126,7 @@ class JoinMeetingView(APIView):
                 return Response({"error": "You do not meet the required school criteria."}, status=403)
 
         meeting.participants.add(user)
+        handle_join_meeting_notification(meeting, user)
 
         # 마지막 한 명이 참여한 경우 → 종료 상태 처리
         if meeting.participants.count() >= meeting.capacity:
@@ -233,6 +241,7 @@ class KickParticipantView(APIView):
             return Response({"error": "User is not a participant."}, status=400)
 
         meeting.participants.remove(remove_user)
+        handle_kick_participant_notification(meeting, remove_user)
         return Response(status=200)
 
 class UpdateMeetingView(APIView):
@@ -306,7 +315,8 @@ class CreateMeetingNoticeView(APIView):
             return Response({"error": "Only creator can write notice."}, status=403)
 
         content = request.data.get("content")
-        MeetingNotice.objects.create(meeting=meeting, author=request.user, content=content)
+        notice = MeetingNotice.objects.create(meeting=meeting, author=request.user, content=content)
+        handle_notice_created_notification(notice)
         return Response(status=201)
 
 class ListMeetingNoticesView(APIView):
@@ -393,7 +403,8 @@ class CreateMeetingQnAView(APIView):
         if not content:
             return Response({"error": "Missing content."}, status=400)
 
-        MeetingQnA.objects.create(meeting=meeting, author=user, content=content)
+        qna = MeetingQnA.objects.create(meeting=meeting, author=user, content=content)
+        handle_question_notification(qna)
         return Response(status=201)
 
 class CreateMeetingQnACommentView(APIView):
@@ -410,7 +421,8 @@ class CreateMeetingQnACommentView(APIView):
         if not content:
             return Response({"error": "Missing content."}, status=400)
 
-        MeetingQnAComment.objects.create(qna=qna, author=user, content=content)
+        comment = MeetingQnAComment.objects.create(qna=qna, author=user, content=content)
+        handle_qna_comment_notification(comment)
         return Response(status=201)
 
 class MeetingQnAListView(APIView):

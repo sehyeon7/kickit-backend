@@ -17,6 +17,9 @@ class Notification(models.Model):
     board_id = models.IntegerField(null=True, blank=True)
     post_id = models.IntegerField(null=True, blank=True)
     comment_id = models.IntegerField(null=True, blank=True)
+    meetup_id = models.IntegerField(null=True, blank=True)
+    notice_id = models.IntegerField(null=True, blank=True)
+    question_id = models.IntegerField(null=True, blank=True)
 
     def __str__(self):
         return f"Notification for {self.user.username}: {self.message}"
