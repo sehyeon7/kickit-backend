@@ -390,27 +390,35 @@ class CommentDeleteView(generics.DestroyAPIView):
         user = request.user
         comment = get_object_or_404(Comment, id=comment_id, post_id=post_id)
 
-        # # 대댓글이 있는 경우 삭제 불가 (추가된 로직)
-        # if comment.replies.exists():
-        #     return Response({"error": "You cannot delete a comment that has replies."}, status=status.HTTP_400_BAD_REQUEST)
-
-        # 본인 댓글이거나 관리자인 경우 삭제 가능
+        # 권한 체크
         if comment.author != user and not user.is_staff:
-            return Response({"error": "You do not have permission to delete this comment."}, status=status.HTTP_403_FORBIDDEN)
+            return Response({"error": "권한이 없습니다."}, status=status.HTTP_403_FORBIDDEN)
+
+        parent = comment.parent
 
         if comment.replies.exists():
-            # 실제 삭제하지 않고 is_deleted로 표시
+            # (1) 답글이 있는 경우 → is_deleted 표시
             comment.is_deleted = True
             comment.save()
 
-            all_replies = comment.replies.all()
-            if all_replies and all(reply.is_deleted for reply in all_replies):
-                all_replies.delete()
+            # 답글 중 아직 is_deleted=False인 게 남아있지 않다면
+            remaining = comment.replies.filter(is_deleted=False).exists()
+            if not remaining:
+                # 자식들 통째로 삭제 후 자신도 삭제
+                comment.replies.all().delete()
                 comment.delete()
         else:
+            # (2) 자식 없는 경우 → 실제 삭제
             comment.delete()
 
-        return Response({"detail": "The comment has been deleted."}, status=status.HTTP_204_NO_CONTENT)
+            # → 부모 순차 삭제(부모가 is_deleted=True 이면서 더 이상 자식이 없을 때만)
+            while parent and parent.is_deleted and not parent.replies.exists():
+                grandparent = parent.parent
+                parent.delete()
+                parent = grandparent
+
+        return Response({"detail": "댓글이 삭제되었습니다."}, status=status.HTTP_204_NO_CONTENT)
+
 
 class PostLikeToggleView(generics.GenericAPIView):
     """
