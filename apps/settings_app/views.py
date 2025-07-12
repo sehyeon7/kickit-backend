@@ -426,7 +426,7 @@ class ReportCommentView(APIView):
         post_id = data.get("post_id")
         board_id = data.get("board_id")
         user_id = data.get("user_id")
-        reason_text = data.get("reason")
+        reason_text = data.get("reason") or ""            
 
         comment = Comment.objects.filter(id=comment_id, post_id=post_id).first()
         if not comment:

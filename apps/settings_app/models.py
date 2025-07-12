@@ -86,7 +86,12 @@ class Report(models.Model):
     meeting_id = models.IntegerField(default=0)
 
     reason = models.IntegerField(choices=ReportReason.choices, default=ReportReason.OTHER)
-    reason_text = models.CharField(max_length=300, blank=True)
+    reason_text = models.CharField(
+        max_length=300,
+        blank=True,
+        null=True,
+        default=''
+    )
 
     created_at = models.DateTimeField(auto_now_add=True)
 
