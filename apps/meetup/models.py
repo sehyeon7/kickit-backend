@@ -51,8 +51,8 @@ class Meeting(models.Model):
     liked_users = models.ManyToManyField(User, related_name="liked_meetings", blank=True)
 
     def is_closed(self):
-        return self.participants.count() >= self.capacity or self.is_closed_manual
-
+        return (self.participants.count() + 1) >= self.capacity or self.is_closed_manual
+    
     def is_ended(self):
         return self.start_time < timezone.now()
 

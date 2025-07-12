@@ -14,7 +14,10 @@ from django.shortcuts import get_object_or_404
 from django.db import transaction
 from django.db.models import Q, F, Count
 from .models import Meeting, MeetingNotice, MeetingSearchHistory, MeetingQnA, MeetingQnAComment
-from .serializers import MeetingDetailSerializer, ParticipantSerializer, MeetingNoticeListSerializer, MeetingSearchHistorySerializer, MeetingQnASerializer
+from .serializers import (
+    MeetingDetailSerializer, ParticipantSerializer, MeetingNoticeListSerializer, 
+    MeetingSearchHistorySerializer, MeetingQnASerializer, MeetingCreateSerializer
+)
 from apps.account.models import Language, Nationality, School
 from django.contrib.auth.models import User
 from .supabase_utils import upload_image_to_supabase, delete_image_from_supabase
@@ -137,49 +140,70 @@ class JoinMeetingView(APIView):
 
 class CreateMeetingView(CreateAPIView):
     permission_classes = [IsAuthenticated]
-    serializer_class = MeetingDetailSerializer
+    serializer_class = MeetingCreateSerializer
 
     def perform_create(self, serializer):
-        start_time = serializer.validated_data.get("start_time")
-        if start_time and start_time < timezone.now():
-            raise serializers.ValidationError({"error": "The event start time must be in the future."})
-        
-        meeting = serializer.save(creator=self.request.user)
-        meeting.participants.add(self.request.user)
+        data     = serializer.validated_data
+        loc      = data.pop('location')
+        thumbs   = data.pop('thumbnails', [])
+        langs    = data.pop('languages', [])
+        nats     = data.pop('nationalities', [])
+        schools  = data.pop('school_ids', [])
 
-        data = self.request.data
+        # Meeting 인스턴스 생성 (creator만 participants에 추가하지 않음)
+        meeting = Meeting.objects.create(
+            **data,
+            lat=loc['lat'], lng=loc['lng'],
+            location_name=loc['name'],
+            address=loc['address'],
+            rlg=loc['rlg'],
+            creator=self.request.user
+        )
 
-        # languages 처리
-        if data.getlist("languages") == ["all"]:
+        # M2M: languages
+        if langs == ['all']:
             meeting.languages.clear()
         else:
-            lang_ids = Language.objects.filter(id__in=data.getlist("languages"))
-            meeting.languages.set(lang_ids)
+            meeting.languages.set(
+                Language.objects.filter(language__in=langs)
+            )
 
-        # nationalities 처리
-        if data.getlist("nationalities") == ["all"]:
+        # M2M: nationalities
+        if nats == ['all']:
             meeting.nationalities.clear()
         else:
-            nat_ids = Nationality.objects.filter(id__in=data.getlist("nationalities"))
-            meeting.nationalities.set(nat_ids)
+            meeting.nationalities.set(
+                Nationality.objects.filter(name__in=nats)
+            )
 
-        # schools 처리
-        if data.getlist("school_ids") == ["all"]:
-            meeting.schools.clear()
+        # M2M: school_ids
+        if schools == ['all']:
+            meeting.school_ids.clear()
         else:
-            school_ids = School.objects.filter(id__in=data.getlist("school_ids"))
-            meeting.schools.set(school_ids)
-        # 썸네일 이미지 업로드 및 저장
-        from .supabase_utils import upload_image_to_supabase
-        new_files = self.request.FILES.getlist("new_images")
-        thumbnail_urls = []
+            pks = [int(pk) for pk in schools]
+            meeting.school_ids.set(
+                School.objects.filter(pk__in=pks)
+            )
 
-        for file in new_files:
-            uploaded_url = upload_image_to_supabase(file)
-            if uploaded_url:
-                thumbnail_urls.append(uploaded_url)
-        meeting.thumbnails = thumbnail_urls
+        # 썸네일 업로드
+        urls = []
+        for f in thumbs:
+            url = upload_image_to_supabase(f)
+            if url:
+                urls.append(url)
+        meeting.thumbnails = urls
         meeting.save()
+
+        return meeting
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        meeting = self.perform_create(serializer)
+        # 생성된 Meeting을 상세 시리얼라이저로 응답
+        output = MeetingDetailSerializer(meeting, context={'request': request})
+        return Response(output.data, status=drf_status.HTTP_201_CREATED)
+
 
 class ToggleMeetingCloseView(APIView):
     permission_classes = [IsAuthenticated]
