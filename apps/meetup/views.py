@@ -140,49 +140,51 @@ class JoinMeetingView(APIView):
 
 class CreateMeetingView(CreateAPIView):
     permission_classes = [IsAuthenticated]
-    serializer_class = MeetingCreateSerializer
+    serializer_class   = MeetingCreateSerializer
 
-    def perform_create(self, serializer):
-        data     = serializer.validated_data
-        loc      = data.pop('location')
-        thumbs   = data.pop('thumbnails', [])
-        langs    = data.pop('languages', [])
-        nats     = data.pop('nationalities', [])
-        schools  = data.pop('school_ids', [])
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data    = serializer.validated_data
+        loc     = data.pop('location')
+        thumbs  = data.pop('thumbnails', [])
+        langs   = data.pop('languages')
+        nats    = data.pop('nationalities')
+        schools = data.pop('school_ids')
 
-        # Meeting 인스턴스 생성 (creator만 participants에 추가하지 않음)
+        # 이벤트 생성
         meeting = Meeting.objects.create(
-            **data,
-            lat=loc['lat'], lng=loc['lng'],
-            location_name=loc['name'],
-            address=loc['address'],
-            rlg=loc['rlg'],
-            creator=self.request.user
+            title         = data['title'],
+            start_time    = data['start_time'],
+            capacity      = data['capacity'],
+            category_id   = data['category_id'],
+            description   = data['description'],
+            lat           = loc['lat'],
+            lng           = loc['lng'],
+            location_name = loc['name'],
+            address       = loc['address'],
+            rlg           = loc['rlg'],
+            creator       = request.user
         )
 
-        # M2M: languages
+        # M2M 설정
         if langs == ['all']:
             meeting.languages.clear()
         else:
             meeting.languages.set(
                 Language.objects.filter(language__in=langs)
             )
-
-        # M2M: nationalities
         if nats == ['all']:
             meeting.nationalities.clear()
         else:
             meeting.nationalities.set(
                 Nationality.objects.filter(name__in=nats)
             )
-
-        # M2M: school_ids
         if schools == ['all']:
             meeting.school_ids.clear()
         else:
-            pks = [int(pk) for pk in schools]
             meeting.school_ids.set(
-                School.objects.filter(pk__in=pks)
+                School.objects.filter(pk__in=[int(s) for s in schools])
             )
 
         # 썸네일 업로드
@@ -194,15 +196,9 @@ class CreateMeetingView(CreateAPIView):
         meeting.thumbnails = urls
         meeting.save()
 
-        return meeting
-
-    def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        meeting = self.perform_create(serializer)
-        # 생성된 Meeting을 상세 시리얼라이저로 응답
+        # 응답
         output = MeetingDetailSerializer(meeting, context={'request': request})
-        return Response(output.data, status=drf_status.HTTP_201_CREATED)
+        return Response(output.data, status=status.HTTP_201_CREATED)
 
 
 class ToggleMeetingCloseView(APIView):

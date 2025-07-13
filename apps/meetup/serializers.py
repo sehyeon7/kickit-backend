@@ -66,52 +66,64 @@ class MeetingDetailSerializer(serializers.ModelSerializer):
         return ParticipantSerializer(obj.participants.all(), many=True).data
 
 class LocationSerializer(serializers.Serializer):
-    lat     = serializers.FloatField()
-    lng     = serializers.FloatField()
-    name    = serializers.CharField(max_length=255)
+    lat = serializers.FloatField()
+    lng = serializers.FloatField()
+    name = serializers.CharField(max_length=255)
     address = serializers.CharField(max_length=255)
-    rlg     = serializers.ChoiceField(choices=RLG.choices)
+    rlg = serializers.ChoiceField(choices=RLG.choices)
 
     def validate_rlg(self, value):
-        # 한국 지역만 허용
-        # (RLG 가 모두 한국 지역이므로, 추가 검증 불필요할 수 있습니다)
         return value
 
-class MeetingCreateSerializer(serializers.ModelSerializer):
-    time           = serializers.DateTimeField(source='start_time')
-    location       = LocationSerializer(write_only=True)
-    capacity       = serializers.IntegerField(min_value=2, max_value=20)
-    languages      = serializers.ListField(
-                        child=serializers.CharField(),
-                        help_text="['all'] 또는 언어 코드 리스트"
-                    )
-    nationalities  = serializers.ListField(
-                        child=serializers.CharField(),
-                        help_text="['all'] 또는 국가명 리스트"
-                    )
-    school_ids     = serializers.ListField(
-                        child=serializers.CharField(),  # 문자열 'all' 허용
-                        help_text="['all'] 또는 학교 PK 리스트"
-                    )
-    category_id    = serializers.ChoiceField(choices=MeetingCategory.choices)
-    description    = serializers.CharField(max_length=2000)
-    thumbnails     = serializers.ListField(
-                        child=serializers.ImageField(),
-                        required=False,
-                        help_text="multipart 파일 필드"
-                    )
+class MeetingCreateSerializer(serializers.Serializer):
+    title         = serializers.CharField(max_length=255)
+    time          = serializers.DateTimeField(source='start_time')
+    location      = serializers.JSONField(write_only=True)
+    capacity      = serializers.IntegerField(min_value=2, max_value=20)
+    languages     = serializers.JSONField()
+    nationalities = serializers.JSONField()
+    school_ids    = serializers.JSONField()
+    category_id   = serializers.ChoiceField(choices=MeetingCategory.choices)
+    description   = serializers.CharField(max_length=2000)
+    thumbnails    = serializers.ListField(
+        child=serializers.ImageField(), required=False
+    )
 
-    class Meta:
-        model  = Meeting
-        fields = [
-            "title", "time", "location", "capacity",
-            "languages", "nationalities", "school_ids",
-            "category_id", "description", "thumbnails",
-        ]
+    def to_internal_value(self, data):
+        # multipart/form-data 로 넘어온 JSON 문자열 파싱
+        for key in ('location', 'languages', 'nationalities', 'school_ids'):
+            raw = data.get(key)
+            if isinstance(raw, str):
+                try:
+                    data[key] = json.loads(raw)
+                except json.JSONDecodeError:
+                    pass
+        return super().to_internal_value(data)
 
     def validate_time(self, value):
         if value <= timezone.now():
             raise serializers.ValidationError("The event start time must be in the future.")
+        return value
+
+    def validate_location(self, value):
+        # nested LocationSerializer 로 검증
+        loc_ser = LocationSerializer(data=value)
+        loc_ser.is_valid(raise_exception=True)
+        return value
+
+    def validate_languages(self, value):
+        if not isinstance(value, list):
+            raise serializers.ValidationError("languages must be a list")
+        return value
+
+    def validate_nationalities(self, value):
+        if not isinstance(value, list):
+            raise serializers.ValidationError("nationalities must be a list")
+        return value
+
+    def validate_school_ids(self, value):
+        if not isinstance(value, list):
+            raise serializers.ValidationError("school_ids must be a list")
         return value
 
 
