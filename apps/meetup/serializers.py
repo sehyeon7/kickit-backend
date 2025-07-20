@@ -25,13 +25,17 @@ class MeetingDetailSerializer(serializers.ModelSerializer):
     school_names = serializers.SlugRelatedField(slug_field="name", many=True, read_only=True, source="school_ids")
     thumbnails = serializers.ListField(child=serializers.URLField(), required=False)
 
+    is_all_languages = serializers.BooleanField()
+    is_all_nationalities = serializers.BooleanField()
+    is_all_schools = serializers.BooleanField()
+
     class Meta:
         model = Meeting
         fields = [
             'id', 'title', 'start_time', 'location', 'capacity',
             'languages', 'nationalities', 'school_names', 'category_id', 'description', 'thumbnails',
             'is_closed', 'is_ended', 'is_liked', 'creator', 'participants',
-            'is_creator', 'is_participant', 'thumbnails'
+            'is_creator', 'is_participant', 'thumbnails', 'is_all_languages', 'is_all_nationalities', 'is_all_schools',
         ]
 
     def get_location(self, obj):

@@ -50,6 +50,11 @@ class Meeting(models.Model):
     is_closed_manual = models.BooleanField(default=False)
     liked_users = models.ManyToManyField(User, related_name="liked_meetings", blank=True)
 
+    is_all_languages = models.BooleanField(default=False)
+    is_all_nationalities = models.BooleanField(default=False)
+    is_all_schools = models.BooleanField(default=False)
+
+
     def is_closed(self):
         return (self.participants.count() + 1) >= self.capacity or self.is_closed_manual
     

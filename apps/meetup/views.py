@@ -177,22 +177,24 @@ class CreateMeetingView(CreateAPIView):
         # M2M 설정
         if langs == ['all']:
             meeting.languages.clear()
+            meeting.is_all_languages = True
         else:
-            meeting.languages.set(
-                Language.objects.filter(language__in=langs)
-            )
+            meeting.languages.set(Language.objects.filter(language__in=langs))
+            meeting.is_all_languages = False
+
         if nats == ['all']:
             meeting.nationalities.clear()
+            meeting.is_all_nationalities = True
         else:
-            meeting.nationalities.set(
-                Nationality.objects.filter(name__in=nats)
-            )
+            meeting.nationalities.set(Nationality.objects.filter(name__in=nats))
+            meeting.is_all_nationalities = False
+
         if schools == ['all']:
             meeting.school_ids.clear()
+            meeting.is_all_schools = True
         else:
-            meeting.school_ids.set(
-                School.objects.filter(pk__in=[int(s) for s in schools])
-            )
+            meeting.school_ids.set(School.objects.filter(pk__in=[int(s) for s in schools]))
+            meeting.is_all_schools = False
 
         # 썸네일 업로드
         urls = []
@@ -200,6 +202,11 @@ class CreateMeetingView(CreateAPIView):
             url = upload_image_to_supabase(f)
             if url:
                 urls.append(url)
+        
+        if not urls:
+            default_url = f"{supabase_url}/storage/v1/object/public/{supabase_bucket}/default_images/Placeholder%20Image.webp"
+            urls = [default_url]
+
         meeting.thumbnails = urls
         meeting.save()
 
