@@ -124,7 +124,7 @@ class JoinMeetingView(APIView):
                 )
 
         if meeting.nationalities.exists():
-            user_nationality_ids = user.profile.nationalities.values_list('id', flat=True)
+            user_nationality_ids = [user.profile.nationality_id] if user.profile.nationality_id else []
             if not meeting.nationalities.filter(id__in=user_nationality_ids).exists():
                 return Response(
                     {"error": "You do not meet the required nationality criteria."},
