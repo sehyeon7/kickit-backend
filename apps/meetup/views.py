@@ -10,6 +10,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework import serializers
 from rest_framework import status
 from django.utils import timezone
+from datetime import datetime, time
 from django.shortcuts import get_object_or_404
 from django.db import transaction
 from django.db.models import Q, F, Count
@@ -67,8 +68,14 @@ class MeetingListView(ListAPIView):
         start_date = self.request.query_params.get("start_date")
         end_date = self.request.query_params.get("end_date")
         if start_date and end_date:
-            queryset = queryset.filter(start_time__range=[start_date, end_date])
-
+            try:
+                start_dt = datetime.strptime(start_date, "%Y-%m-%d")
+                end_dt = datetime.strptime(end_date, "%Y-%m-%d")
+                end_dt = datetime.combine(end_dt, time(23, 59, 59))
+                queryset = queryset.filter(start_time__range=(start_dt, end_dt))
+            except ValueError:
+                pass
+    
         category_id = self.request.query_params.get("category_id")
         if category_id is not None:
             queryset = queryset.filter(category_id=category_id)
