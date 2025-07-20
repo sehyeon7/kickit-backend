@@ -4,6 +4,7 @@ from .models import (
 )
 from apps.account.models import Language, Nationality, School
 from django.utils import timezone
+import json
 
 class ParticipantSerializer(serializers.Serializer):
     user_id = serializers.IntegerField(source='id')
@@ -21,14 +22,14 @@ class MeetingDetailSerializer(serializers.ModelSerializer):
     participants = serializers.SerializerMethodField()
     languages = serializers.SlugRelatedField(slug_field="language", many=True, read_only=True)
     nationalities = serializers.SlugRelatedField(slug_field="name", many=True, read_only=True)
-    school_ids = serializers.SlugRelatedField(slug_field="name", many=True, read_only=True)
+    school_names = serializers.SlugRelatedField(slug_field="name", many=True, read_only=True, source="school_ids")
     thumbnails = serializers.ListField(child=serializers.URLField(), required=False)
 
     class Meta:
         model = Meeting
         fields = [
             'id', 'title', 'start_time', 'location', 'capacity',
-            'languages', 'nationalities', 'school_ids', 'category_id', 'description', 'thumbnails',
+            'languages', 'nationalities', 'school_names', 'category_id', 'description', 'thumbnails',
             'is_closed', 'is_ended', 'is_liked', 'creator', 'participants',
             'is_creator', 'is_participant', 'thumbnails'
         ]
@@ -82,7 +83,7 @@ class MeetingCreateSerializer(serializers.Serializer):
     capacity      = serializers.IntegerField(min_value=2, max_value=20)
     languages     = serializers.JSONField()
     nationalities = serializers.JSONField()
-    school_ids    = serializers.JSONField()
+    school_names = serializers.JSONField()
     category_id   = serializers.ChoiceField(choices=MeetingCategory.choices)
     description   = serializers.CharField(max_length=2000)
     thumbnails    = serializers.ListField(
@@ -91,7 +92,7 @@ class MeetingCreateSerializer(serializers.Serializer):
 
     def to_internal_value(self, data):
         # multipart/form-data 로 넘어온 JSON 문자열 파싱
-        for key in ('location', 'languages', 'nationalities', 'school_ids'):
+        for key in ('location', 'languages', 'nationalities', 'school_names'):
             raw = data.get(key)
             if isinstance(raw, str):
                 try:
@@ -121,9 +122,9 @@ class MeetingCreateSerializer(serializers.Serializer):
             raise serializers.ValidationError("nationalities must be a list")
         return value
 
-    def validate_school_ids(self, value):
+    def validate_school_names(self, value):
         if not isinstance(value, list):
-            raise serializers.ValidationError("school_ids must be a list")
+            raise serializers.ValidationError("school_names must be a list")
         return value
 
 

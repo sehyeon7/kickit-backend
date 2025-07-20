@@ -150,7 +150,7 @@ class CreateMeetingView(CreateAPIView):
         thumbs  = data.pop('thumbnails', [])
         langs   = data.pop('languages')
         nats    = data.pop('nationalities')
-        schools = data.pop('school_ids')
+        schools = data.pop('school_names')
 
         # 이벤트 생성
         meeting = Meeting.objects.create(
