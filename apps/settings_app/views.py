@@ -506,14 +506,14 @@ class ReportMeetingView(APIView):
         meeting_id = request.data.get("meeting_id")
         reason_text = request.data.get("report_reason")
 
+        if meeting.creator == user:
+            return Response({"error": "You cannot report your own meeting."}, status=400)
+
         if not meeting_id or not reason_text:
             return Response({"error": "meeting_id and report_reason are required."}, status=400)
 
         from apps.meetup.models import Meeting
         meeting = get_object_or_404(Meeting, id=meeting_id)
-
-        if meeting.creator == user:
-            return Response({"error": "You cannot report your own meeting."}, status=400)
 
         already_reported = Report.objects.filter(
             reporter=user,
