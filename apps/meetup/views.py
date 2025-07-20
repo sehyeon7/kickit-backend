@@ -459,3 +459,29 @@ class MeetingQnAListView(APIView):
 
         serializer = MeetingQnASerializer(qnas, many=True)
         return Response(serializer.data, status=200)
+
+class HostedUpcomingMeetingsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, user_id):
+        user = get_object_or_404(User, id=user_id, is_active=True)
+        meetings = Meeting.objects.filter(
+            creator=user,
+            start_time__gte=timezone.now()
+        ).order_by('-start_time')
+
+        serializer = MeetingDetailSerializer(meetings, many=True, context={"request": request})
+        return Response(serializer.data, status=200)
+
+class HostedPastMeetingsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, user_id):
+        user = get_object_or_404(User, id=user_id, is_active=True)
+        meetings = Meeting.objects.filter(
+            creator=user,
+            start_time__lt=timezone.now()
+        ).order_by('-start_time')
+
+        serializer = MeetingDetailSerializer(meetings, many=True, context={"request": request})
+        return Response(serializer.data, status=200)

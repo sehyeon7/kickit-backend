@@ -5,7 +5,8 @@ from .views import (
     MeetingParticipantsView, KickParticipantView, UpdateMeetingView, DeleteMeetingView,
     CreateMeetingNoticeView, ListMeetingNoticesView, DeleteMeetingNoticeView,
     ToggleMeetingLikeView, MeetingSearchHistoryListView, MeetingSearchHistoryDeleteView,
-    CreateMeetingQnAView, CreateMeetingQnACommentView, MeetingQnAListView, MeetingSearchHistoryDeleteAllView
+    CreateMeetingQnAView, CreateMeetingQnACommentView, MeetingQnAListView, MeetingSearchHistoryDeleteAllView,
+    HostedUpcomingMeetingsView, HostedPastMeetingsView
 )
 
 urlpatterns = [
@@ -28,4 +29,6 @@ urlpatterns = [
     path("<int:meeting_id>/qna/", CreateMeetingQnAView.as_view(), name="meeting-qna-create"),
     path("qna/<int:qna_id>/comment/", CreateMeetingQnACommentView.as_view(), name="meeting-qna-comment"),
     path("<int:meeting_id>/qna/list/", MeetingQnAListView.as_view(), name="meeting-qna-list"),
+    path("host/<int:user_id>/upcoming/", HostedUpcomingMeetingsView.as_view(), name="hosted-upcoming-meetings"),
+    path("host/<int:user_id>/past/", HostedPastMeetingsView.as_view(), name="hosted-past-meetings"),
 ]
