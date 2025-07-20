@@ -80,6 +80,11 @@ class ProfileUpdateSerializer(serializers.Serializer):
         }
     )
     image = serializers.ImageField(required=False, validators=[validate_image_extension])
+    introduce = serializers.CharField(
+        max_length=200, required=False, allow_blank=True,
+        error_messages={"max_length": "Introduce must be 200 characters or fewer."}
+    )
+
 
     def validate_nickname(self, value):
         request = self.context.get("request")

@@ -119,6 +119,7 @@ class ProfileUpdateView(views.APIView):
 
         nickname = serializer.validated_data.get("nickname", None)
         image = serializer.validated_data.get("image", None)
+        introduce = serializer.validated_data.get("introduce")
 
         # 닉네임 변경
         if nickname:
@@ -138,12 +139,16 @@ class ProfileUpdateView(views.APIView):
             if not uploaded_url:
                 return Response({"error": "Image upload failed."}, status=500)
             profile.profile_image = uploaded_url
+        
+        if introduce is not None:
+            profile.introduce = introduce
 
         profile.save()
 
         return Response({
             "detail": "Profile has been updated.",
-            "profile_image": profile.profile_image if image else None
+            "profile_image": profile.profile_image if image else None,
+            "introduce": profile.introduce
         }, status=200)
 
 # class NicknameUpdateView(views.APIView):

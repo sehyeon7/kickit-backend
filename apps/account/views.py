@@ -571,18 +571,6 @@ class RegisterFCMTokenView(APIView):
         except Exception as e:
             return Response({"error": f"Failed to register FCM token. {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-class IntroduceUpdateView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
-
-    def put(self, request):
-        serializer = IntroduceUpdateSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-
-        introduce = serializer.validated_data["introduce"]
-        request.user.profile.introduce = introduce
-        request.user.profile.save()
-
-        return Response(status=200)
 
 class OtherUserProfileView(APIView):
     permission_classes = [permissions.IsAuthenticated]

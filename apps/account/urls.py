@@ -6,7 +6,7 @@ from .views import (
     SchoolListView,
     PasswordResetRequestView, TokenRefreshView, RegisterFCMTokenView,
     VerificationStatusView, PasswordResetView, BlockedUsersListView,
-    LanguageListView, NationalityListView, IntroduceUpdateView, OtherUserProfileView
+    LanguageListView, NationalityListView, OtherUserProfileView
 )
 
 urlpatterns = [
@@ -53,6 +53,5 @@ urlpatterns = [
     path('languages/', LanguageListView.as_view(), name='language-list'),
     path('nationalities/', NationalityListView.as_view(), name='nationality-list'),
 
-    path("profile/introduce/", IntroduceUpdateView.as_view(), name="introduce-update"),
     path("profile/user_id=<int:user_id>/", OtherUserProfileView.as_view(), name="user-profile-view"),
 ]
