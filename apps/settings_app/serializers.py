@@ -51,18 +51,11 @@ class UserSettingSerializer(serializers.ModelSerializer):
     - `notification_type`: 배열로 반환 (최대 1개)
     - `notification_categories`: 배열 유지
     """
-    notification_type = serializers.SerializerMethodField()
     notification_categories = serializers.SerializerMethodField()
 
     class Meta:
         model = UserSetting
-        fields = ['notification_type', 'notification_categories']
-
-    def get_notification_type(self, obj):
-        """
-        단일 notification_type을 배열로 감싸서 반환
-        """
-        return list(obj.notification_type.values_list("id", flat=True))
+        fields = ['notification_categories']
 
     def get_notification_categories(self, obj):
         """

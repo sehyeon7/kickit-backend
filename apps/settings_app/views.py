@@ -60,17 +60,6 @@ class UserSettingDetailView(generics.RetrieveUpdateAPIView):
         data = request.data
         user_setting = self.get_object()
 
-        # notification_type 업데이트
-        if "notification_type" in data:
-            notification_type_ids = data.get("notification_type", [])
-            if not isinstance(notification_type_ids, list):
-                return Response({"error": "notification_type must be an array containing a single ID."}, status=status.HTTP_400_BAD_REQUEST)
-
-            valid_types = NotificationType.objects.filter(id__in=notification_type_ids)
-            if len(valid_types) != len(notification_type_ids):
-                return Response({"error": "Some notification_type IDs are invalid."}, status=status.HTTP_400_BAD_REQUEST)
-            user_setting.notification_type.set(valid_types)
-
         # notification_categories 업데이트
         if "notification_categories" in data:
             category_ids = data.get("notification_categories", [])
