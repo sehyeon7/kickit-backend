@@ -31,6 +31,7 @@ from apps.notification.utils import (
     handle_qna_comment_notification, 
     handle_kick_participant_notification
 )
+from .supabase_utils import supabase_url, supabase_bucket
 
 class MeetingDetailView(APIView):
     permission_classes = [IsAuthenticated]
@@ -193,7 +194,7 @@ class CreateMeetingView(CreateAPIView):
             meeting.school_ids.clear()
             meeting.is_all_schools = True
         else:
-            meeting.school_ids.set(School.objects.filter(pk__in=[int(s) for s in schools]))
+            meeting.school_ids.set(School.objects.filter(name__in=schools))
             meeting.is_all_schools = False
 
         # 썸네일 업로드
